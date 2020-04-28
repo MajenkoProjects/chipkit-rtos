@@ -1,0 +1,66 @@
+\hypertarget{gpio_8c}{}\doxysection{drivers/gpio.c File Reference}
+\label{gpio_8c}\index{drivers/gpio.c@{drivers/gpio.c}}
+{\ttfamily \#include $<$Arduino.\+h$>$}\newline
+{\ttfamily \#include \char`\"{}sdk/gpio.\+h\char`\"{}}\newline
+{\ttfamily \#include \char`\"{}sdk/chipspec.\+h\char`\"{}}\newline
+Include dependency graph for gpio.\+c\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=335pt]{gpio_8c__incl}
+\end{center}
+\end{figure}
+\doxysubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+void \mbox{\hyperlink{gpio_8c_a0b5f73a7c9893db12709c3bc94d72074}{gpio\+\_\+set\+\_\+mode}} (uint8\+\_\+t pin, uint8\+\_\+t mode)
+\item 
+uint8\+\_\+t \mbox{\hyperlink{gpio_8c_aa3ab5e33b35024f4cf28e462f9fe3224}{gpio\+\_\+read}} (uint8\+\_\+t pin)
+\item 
+void \mbox{\hyperlink{gpio_8c_ae37a28d9e5051b55a135221e1ac3b7d6}{gpio\+\_\+write}} (uint8\+\_\+t pin, uint8\+\_\+t val)
+\item 
+void \mbox{\hyperlink{gpio_8c_af27bb837d788ae2049c27e3c8b474a04}{gpio\+\_\+set\+\_\+function}} (uint8\+\_\+t pin, uint8\+\_\+t function)
+\item 
+void \mbox{\hyperlink{gpio_8c_a478e6d68b607fa43aab2cdc8ae2ce6f9}{gpio\+\_\+unlock\+\_\+pps}} ()
+\item 
+void \mbox{\hyperlink{gpio_8c_ab207612b7c52178093dd77eb03ffb311}{gpio\+\_\+lock\+\_\+pps}} ()
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Function Documentation}
+\mbox{\Hypertarget{gpio_8c_ab207612b7c52178093dd77eb03ffb311}\label{gpio_8c_ab207612b7c52178093dd77eb03ffb311}} 
+\index{gpio.c@{gpio.c}!gpio\_lock\_pps@{gpio\_lock\_pps}}
+\index{gpio\_lock\_pps@{gpio\_lock\_pps}!gpio.c@{gpio.c}}
+\doxysubsubsection{\texorpdfstring{gpio\_lock\_pps()}{gpio\_lock\_pps()}}
+{\footnotesize\ttfamily void gpio\+\_\+lock\+\_\+pps (\begin{DoxyParamCaption}{ }\end{DoxyParamCaption})}
+
+\mbox{\Hypertarget{gpio_8c_aa3ab5e33b35024f4cf28e462f9fe3224}\label{gpio_8c_aa3ab5e33b35024f4cf28e462f9fe3224}} 
+\index{gpio.c@{gpio.c}!gpio\_read@{gpio\_read}}
+\index{gpio\_read@{gpio\_read}!gpio.c@{gpio.c}}
+\doxysubsubsection{\texorpdfstring{gpio\_read()}{gpio\_read()}}
+{\footnotesize\ttfamily uint8\+\_\+t gpio\+\_\+read (\begin{DoxyParamCaption}\item[{uint8\+\_\+t}]{pin }\end{DoxyParamCaption})}
+
+\mbox{\Hypertarget{gpio_8c_af27bb837d788ae2049c27e3c8b474a04}\label{gpio_8c_af27bb837d788ae2049c27e3c8b474a04}} 
+\index{gpio.c@{gpio.c}!gpio\_set\_function@{gpio\_set\_function}}
+\index{gpio\_set\_function@{gpio\_set\_function}!gpio.c@{gpio.c}}
+\doxysubsubsection{\texorpdfstring{gpio\_set\_function()}{gpio\_set\_function()}}
+{\footnotesize\ttfamily void gpio\+\_\+set\+\_\+function (\begin{DoxyParamCaption}\item[{uint8\+\_\+t}]{pin,  }\item[{uint8\+\_\+t}]{function }\end{DoxyParamCaption})}
+
+\mbox{\Hypertarget{gpio_8c_a0b5f73a7c9893db12709c3bc94d72074}\label{gpio_8c_a0b5f73a7c9893db12709c3bc94d72074}} 
+\index{gpio.c@{gpio.c}!gpio\_set\_mode@{gpio\_set\_mode}}
+\index{gpio\_set\_mode@{gpio\_set\_mode}!gpio.c@{gpio.c}}
+\doxysubsubsection{\texorpdfstring{gpio\_set\_mode()}{gpio\_set\_mode()}}
+{\footnotesize\ttfamily void gpio\+\_\+set\+\_\+mode (\begin{DoxyParamCaption}\item[{uint8\+\_\+t}]{pin,  }\item[{uint8\+\_\+t}]{mode }\end{DoxyParamCaption})}
+
+\mbox{\Hypertarget{gpio_8c_a478e6d68b607fa43aab2cdc8ae2ce6f9}\label{gpio_8c_a478e6d68b607fa43aab2cdc8ae2ce6f9}} 
+\index{gpio.c@{gpio.c}!gpio\_unlock\_pps@{gpio\_unlock\_pps}}
+\index{gpio\_unlock\_pps@{gpio\_unlock\_pps}!gpio.c@{gpio.c}}
+\doxysubsubsection{\texorpdfstring{gpio\_unlock\_pps()}{gpio\_unlock\_pps()}}
+{\footnotesize\ttfamily void gpio\+\_\+unlock\+\_\+pps (\begin{DoxyParamCaption}{ }\end{DoxyParamCaption})}
+
+\mbox{\Hypertarget{gpio_8c_ae37a28d9e5051b55a135221e1ac3b7d6}\label{gpio_8c_ae37a28d9e5051b55a135221e1ac3b7d6}} 
+\index{gpio.c@{gpio.c}!gpio\_write@{gpio\_write}}
+\index{gpio\_write@{gpio\_write}!gpio.c@{gpio.c}}
+\doxysubsubsection{\texorpdfstring{gpio\_write()}{gpio\_write()}}
+{\footnotesize\ttfamily void gpio\+\_\+write (\begin{DoxyParamCaption}\item[{uint8\+\_\+t}]{pin,  }\item[{uint8\+\_\+t}]{val }\end{DoxyParamCaption})}
+
