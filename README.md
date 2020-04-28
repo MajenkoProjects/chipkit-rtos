@@ -21,3 +21,24 @@ the SDK must be enhanced to provide that functionality. It is *not* OK for the u
 interryupts in their own code.
 
 Once all the internal API hardware abstraction is complete the veneer of the rest of the API can be overlaid (things like String and Print, etc).
+
+Plans for the future
+--------------------
+
+* Integrate lwIP into the SDK
+* Removal of all `chipkit-tools` specific macros and register names (to allow compilation by `mipsel-unknown-elf-gcc`)
+
+Contributing
+------------
+
+Contributions are more than welcome. This is shaping up to be a big project, so the more people helping out the better. So a couple
+of words on style and layout:
+
+* Indent 4 spaces (tabs expanded to spaces)
+* Keep drivers if possible to one file per peripheral. 
+* No camelcase in function names. Use underscores to separate words.
+* Prefix functions with the driver they are associated with.
+* No C++
+* At the moment Doxygen is being used to generate documentation, so document your work in your source (not the header unless you have to).
+
+In short: stick to the existing style and we'll all get on well.
