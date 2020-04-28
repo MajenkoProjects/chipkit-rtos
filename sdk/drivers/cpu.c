@@ -4,13 +4,20 @@
 #include "sdk/cpu.h"
 
 uint32_t cpu_get_peripheral_clock() {
-    uint32_t    clock = F_CPU;
 #if defined(__PIC32MZ__)
-    clock = (F_CPU / (PB2DIVbits.PBDIV + 1));
-#else
+    return (cpu_get_system_clock() / (PB2DIVbits.PBDIV + 1));
+#elif defined(__PIC32MX__)
+    uint32_t    clock = cpu_get_system_clock();
     clock >>= OSCCONbits.PBDIV;
-#endif
     return clock;
+#else
+    #error "No support for your CPU, sorry"
+#endif
+}
+
+// TODO: Calculate the clock from the incoming clock source and PLL settings
+uint32_t cpu_get_system_clock() {
+    return F_CPU;
 }
 
 int cpu_get_interrupt_flag(uint8_t irq) {
@@ -65,5 +72,21 @@ void cpu_set_interrupt_priority(uint8_t vec, uint8_t ipl, uint8_t spl) {
     bn = 8 * (vec % 4);
     ipc->clr = (0x1F << bn);
     ipc->set = ((ipl << 2) + spl) << bn;
+}
+
+void cpu_unlock() {
+    SYSKEY = 0;
+    SYSKEY = 0xAA996655;
+    SYSKEY = 0x556699AA;
+}
+
+void cpu_lock() {
+    SYSKEY = 0x33333333;
+}
+
+void cpu_reset() {
+    cpu_disable_interrupts();
+    cpu_unlock();
+    RSWRSTSET=_RSWRST_SWRST_MASK;
 }
 
