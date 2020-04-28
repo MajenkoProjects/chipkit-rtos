@@ -26,7 +26,8 @@ Plans for the future
 --------------------
 
 * Integrate lwIP into the SDK
-* Removal of all `chipkit-tools` specific macros and register names (to allow compilation by `mipsel-unknown-elf-gcc`)
+* Removal of all `pic32-gcc` specific macros and register names (to allow compilation by `mipsel-unknown-elf-gcc`)
+* Expand to MX, MK and MM chips
 
 Contributing
 ------------
