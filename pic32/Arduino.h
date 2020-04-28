@@ -7,6 +7,13 @@
 
 #include "pins_arduino.h"
 
+#ifdef __cplusplus
+#include "WString.h"
+#include "Stream.h"
+#include "Print.h"
+#include "HardwareSerial.h"
+#endif
+
 #define HIGH 0x1
 #define LOW  0x0
 
