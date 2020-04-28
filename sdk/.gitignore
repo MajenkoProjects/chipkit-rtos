@@ -1,0 +1,12 @@
+Makefile
+*.tex
+*.md5
+*.pdf
+*.sty
+*.aux
+*.idx
+*.ilg
+*.ind
+*.log
+*.out
+*.toc
