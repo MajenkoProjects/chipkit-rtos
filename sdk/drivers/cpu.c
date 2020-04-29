@@ -57,11 +57,9 @@ void cpu_clear_interrupt_enable(uint8_t irq) {
 
 int cpu_get_interrupt_enable(uint8_t irq) {
     p32_regset *    iec;
-    uint32_t        st;
 
     iec = ((p32_regset *)&IEC0) + (irq / 32);
-    st = iec->reg;
-    return st;
+    return (iec->reg & (1 << (irq % 32))) ? 1 : 0;
 }
 
 void cpu_set_interrupt_priority(uint8_t vec, uint8_t ipl, uint8_t spl) {

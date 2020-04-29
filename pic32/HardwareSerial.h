@@ -44,4 +44,44 @@ HardwareSerial Serial(SERIAL0);
 #endif
 #endif
 
+#ifdef SERIAL1
+#if (__CHIP_HAS_PPS)
+HardwareSerial Serial(SERIAL1, SERIAL1_TX, SERIAL1_RX);
+#else
+HardwareSerial Serial(SERIAL1);
+#endif
+#endif
+
+#ifdef SERIAL2
+#if (__CHIP_HAS_PPS)
+HardwareSerial Serial(SERIAL2, SERIAL2_TX, SERIAL2_RX);
+#else
+HardwareSerial Serial(SERIAL2);
+#endif
+#endif
+
+#ifdef SERIAL3
+#if (__CHIP_HAS_PPS)
+HardwareSerial Serial(SERIAL3, SERIAL3_TX, SERIAL3_RX);
+#else
+HardwareSerial Serial(SERIAL3);
+#endif
+#endif
+
+#ifdef SERIAL4
+#if (__CHIP_HAS_PPS)
+HardwareSerial Serial(SERIAL4, SERIAL4_TX, SERIAL4_RX);
+#else
+HardwareSerial Serial(SERIAL4);
+#endif
+#endif
+
+#ifdef SERIAL5
+#if (__CHIP_HAS_PPS)
+HardwareSerial Serial(SERIAL5, SERIAL5_TX, SERIAL5_RX);
+#else
+HardwareSerial Serial(SERIAL5);
+#endif
+#endif
+
 #endif

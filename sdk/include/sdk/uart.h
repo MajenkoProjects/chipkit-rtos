@@ -17,10 +17,15 @@
 extern "C" {
 #endif
 
+// This is the type used to transfer data around for the UART.
+// 16 bits are needed so that it's possible to use 9-bit mode.
+typedef uint16_t uart_queue_t;
+
+
 int uart_rx_available(uint8_t uart);
 int uart_tx_available(uint8_t uart);
 int uart_read(uint8_t uart);
-int uart_write(uint8_t uart, uint8_t byte);
+int uart_write(uint8_t uart, uart_queue_t byte);
 int uart_set_tx_pin(uint8_t uart, uint8_t pin);
 int uart_set_rx_pin(uint8_t uart, uint8_t pin);
 int uart_set_baud(uint8_t uart, uint32_t baud);

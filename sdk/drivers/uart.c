@@ -19,7 +19,6 @@ typedef struct {
 } p32_uart;
 
 static struct uartControlDataStruct {
-    TaskHandle_t task;
     QueueHandle_t txBuffer;
     QueueHandle_t rxBuffer;
     const char *name;
@@ -31,46 +30,46 @@ static struct uartControlDataStruct {
 
 static struct uartControlDataStruct uartControlData[__CHIP_HAS_UART] = {
 #if (__CHIP_HAS_UART > 0)
-    { NULL, NULL, NULL, "UART0", _UART1_TX_VECTOR, _UART1_RX_VECTOR, _UART1_FAULT_VECTOR, &U1MODE },
+    { NULL, NULL, "UART0", _UART1_TX_VECTOR, _UART1_RX_VECTOR, _UART1_FAULT_VECTOR, &U1MODE },
 #endif
 #if (__CHIP_HAS_UART > 1)
-    { NULL, NULL, NULL, "UART1", _UART2_TX_VECTOR, _UART2_RX_VECTOR, _UART2_FAULT_VECTOR, &U2MODE },
+    { NULL, NULL, "UART1", _UART2_TX_VECTOR, _UART2_RX_VECTOR, _UART2_FAULT_VECTOR, &U2MODE },
 #endif
 #if (__CHIP_HAS_UART > 2)
-    { NULL, NULL, NULL, "UART2", _UART3_TX_VECTOR, _UART3_RX_VECTOR, _UART3_FAULT_VECTOR, &U3MODE },
+    { NULL, NULL, "UART2", _UART3_TX_VECTOR, _UART3_RX_VECTOR, _UART3_FAULT_VECTOR, &U3MODE },
 #endif
 #if (__CHIP_HAS_UART > 3)
-    { NULL, NULL, NULL, "UART3", _UART4_TX_VECTOR, _UART4_RX_VECTOR, _UART4_FAULT_VECTOR, &U4MODE },
+    { NULL, NULL, "UART3", _UART4_TX_VECTOR, _UART4_RX_VECTOR, _UART4_FAULT_VECTOR, &U4MODE },
 #endif
 #if (__CHIP_HAS_UART > 4)
-    { NULL, NULL, NULL, "UART4", _UART5_TX_VECTOR, _UART5_RX_VECTOR, _UART5_FAULT_VECTOR, &U5MODE },
+    { NULL, NULL, "UART4", _UART5_TX_VECTOR, _UART5_RX_VECTOR, _UART5_FAULT_VECTOR, &U5MODE },
 #endif
 #if (__CHIP_HAS_UART > 5)
-    { NULL, NULL, NULL, "UART5", _UART6_TX_VECTOR, _UART6_RX_VECTOR, _UART6_FAULT_VECTOR, &U6MODE },
+    { NULL, NULL, "UART5", _UART6_TX_VECTOR, _UART6_RX_VECTOR, _UART6_FAULT_VECTOR, &U6MODE },
 #endif
 };
 
 int uart_rx_available(uint8_t uart) {
     if (uartControlData[uart].rxBuffer == NULL) return 0;
-    if (uartControlData[uart].task == NULL) return 0;
     int r = uxQueueMessagesWaiting(uartControlData[uart].rxBuffer);
     return r;
 }
 
 int uart_tx_available(uint8_t uart) {
     if (uartControlData[uart].txBuffer == NULL) return 0;
-    if (uartControlData[uart].task == NULL) return 0;
     return uxQueueSpacesAvailable(uartControlData[uart].txBuffer);
 }
 
-int uart_write(uint8_t uart, uint8_t byte) {
+int uart_write(uint8_t uart, uart_queue_t byte) {
     if (uartControlData[uart].txBuffer == NULL) return 0;
-    if (uartControlData[uart].task == NULL) return 0;
     if (xQueueSendToBack(uartControlData[uart].txBuffer, &byte, portMAX_DELAY) == pdPASS) {
-        xTaskNotify(uartControlData[uart].task, 0, eNoAction);
-        // For some reason a delay is needed here to synchronize the queue
-        // between threads.
-        vTaskDelay(1);
+        if (!cpu_get_interrupt_enable(uartControlData[uart].txVector)) {
+            cpu_set_interrupt_flag(uartControlData[uart].txVector);
+            cpu_set_interrupt_enable(uartControlData[uart].txVector);
+            // For some reason this is needed to allow the queue to
+            // synchronise with the ISR properly. Any clues?
+            vTaskDelay(1);
+        }
         return 1;
     }
     return 0;
@@ -80,7 +79,7 @@ int uart_read(uint8_t uart) {
     if (uxQueueMessagesWaiting(uartControlData[uart].rxBuffer) == 0) {
         return -1;
     }
-    uint8_t b = 0;
+    uart_queue_t b = 0;
     xQueueReceive(uartControlData[uart].rxBuffer, &b, 0);
     return b;
 }
@@ -176,31 +175,11 @@ int uart_set_format(uint8_t uart, uint8_t format) {
     return 1;
 }
 
-static void uart_control_task(void *params) {
-    uint8_t *paramsu8 = (uint8_t *)params;
-    uint8_t uart = *paramsu8;
-    while (1) {
-        xTaskNotifyWait(0, 0, NULL, portMAX_DELAY);
-        if (uxQueueMessagesWaiting(uartControlData[uart].txBuffer) > 0) {
-            cpu_set_interrupt_flag(uartControlData[uart].txVector);
-            cpu_set_interrupt_enable(uartControlData[uart].txVector);
-        }
-    }
-}
-
 int uart_open(uint8_t uart) {
     if (uart >= __CHIP_HAS_UART) return 0;
-    if (uartControlData[uart].task != NULL) {
-        return 0;
-    }
 
-    uartControlData[uart].txBuffer = xQueueCreate(64, 1);
-    uartControlData[uart].rxBuffer = xQueueCreate(64, 1);
-
-    if (xTaskCreate(uart_control_task, uartControlData[uart].name, 256, (void *)&uart, tskIDLE_PRIORITY, &uartControlData[uart].task) != pdPASS) {
-        uartControlData[uart].task = NULL;
-        return 0;
-    }
+    uartControlData[uart].txBuffer = xQueueCreate(64, sizeof(uart_queue_t));
+    uartControlData[uart].rxBuffer = xQueueCreate(64, sizeof(uart_queue_t));
 
     cpu_set_interrupt_priority(uartControlData[uart].txVector, 2, 0);
     cpu_set_interrupt_priority(uartControlData[uart].rxVector, 2, 0);
@@ -218,7 +197,6 @@ int uart_open(uint8_t uart) {
 
 int uart_close(uint8_t uart) {
     if (uart >= __CHIP_HAS_UART) return 0;
-    if (uartControlData[uart].task == NULL) return 0;
     uartControlData[uart].reg->sta.clr = (1 << 12) | (1 << 10);
     uartControlData[uart].reg->mode.clr = (1 << 15);
     cpu_clear_interrupt_enable(uartControlData[uart].txVector);
@@ -227,18 +205,15 @@ int uart_close(uint8_t uart) {
     cpu_set_interrupt_priority(uartControlData[uart].txVector, 0, 0);
     cpu_set_interrupt_priority(uartControlData[uart].rxVector, 0, 0);
     cpu_set_interrupt_priority(uartControlData[uart].faultVector, 0, 0);
-    vTaskDelete(uartControlData[uart].task);
     vQueueDelete(uartControlData[uart].txBuffer);
     vQueueDelete(uartControlData[uart].rxBuffer);
-    uartControlData[uart].task = NULL;
     return 1;
 }
 
 static void inline uart_handle_rx(uint8_t uart) {
     cpu_clear_interrupt_flag(uartControlData[uart].rxVector);
     if (uartControlData[uart].reg->sta.reg & 1) {
-        if (uartControlData[uart].task == NULL) return;
-        uint32_t data = uartControlData[uart].reg->rxreg.reg;
+        uart_queue_t data = uartControlData[uart].reg->rxreg.reg;
         if (uxQueueSpacesAvailable(uartControlData[uart].rxBuffer) > 0) {
             xQueueSendToBackFromISR(uartControlData[uart].rxBuffer, &data, NULL);
         }
@@ -273,17 +248,13 @@ void __ISR(_UART6_RX_VECTOR, IPL2) uart_5_rx() { uart_handle_rx(5); }
 
 static inline void uart_handle_tx(uint8_t uart) {
     cpu_clear_interrupt_flag(uartControlData[uart].txVector);
-    if (uartControlData[uart].task == NULL) {
-        cpu_clear_interrupt_enable(uartControlData[uart].txVector);
-        return;
-    }
 
     if (uxQueueMessagesWaitingFromISR(uartControlData[uart].txBuffer) == 0) {
         cpu_clear_interrupt_enable(uartControlData[uart].txVector);
         return;
     }
 
-    uint8_t b = 0;
+    uart_queue_t b = 0;
     xQueueReceiveFromISR(uartControlData[uart].txBuffer, &b, NULL);
     uartControlData[uart].reg->txreg.reg = b;
 }
