@@ -51,8 +51,14 @@ static struct uartControlDataStruct uartControlData[__CHIP_HAS_UART] = {
 };
 
 int uart_write(uint8_t uart, uint8_t byte) {
-    xStreamBufferSend(uartControlData[uart].txBuffer, &byte, 1, portMAX_DELAY);
-    xTaskNotify(uartControlData[uart].task, 0, eNoAction);
+    if (uartControlData[uart].txBuffer == NULL) return 0;
+    if (uartControlData[uart].task == NULL) return 0;
+    int ret = xStreamBufferSend(uartControlData[uart].txBuffer, &byte, 1, pdMS_TO_TICKS(10000));
+    if (ret > 0) {
+
+        xTaskNotify(uartControlData[uart].task, 0, eNoAction);
+    }
+    return 1; // ret;
 }
 
 int uart_read(uint8_t uart) {
@@ -71,14 +77,15 @@ int uart_read(uint8_t uart) {
  * @returns 1 on success, 0 on failure
  */
 int uart_set_tx_pin(uint8_t uart, uint8_t pin) {
+
     if (uart >= __CHIP_HAS_UART) return 0;
     switch (uart) {
         case 0: return gpio_set_output_function(pin, gpioPPS_U1TX);
-        case 1: return gpio_set_output_function(pin, gpioPPS_U1TX);
-        case 2: return gpio_set_output_function(pin, gpioPPS_U1TX);
-        case 3: return gpio_set_output_function(pin, gpioPPS_U1TX);
-        case 4: return gpio_set_output_function(pin, gpioPPS_U1TX);
-        case 5: return gpio_set_output_function(pin, gpioPPS_U1TX);
+        case 1: return gpio_set_output_function(pin, gpioPPS_U2TX);
+        case 2: return gpio_set_output_function(pin, gpioPPS_U3TX);
+        case 3: return gpio_set_output_function(pin, gpioPPS_U4TX);
+        case 4: return gpio_set_output_function(pin, gpioPPS_U5TX);
+        case 5: return gpio_set_output_function(pin, gpioPPS_U6TX);
     }
     return 0;
 }
@@ -93,11 +100,11 @@ int uart_set_rx_pin(uint8_t uart, uint8_t pin) {
     if (uart >= __CHIP_HAS_UART) return 0;
     switch (uart) {
         case 0: return gpio_set_input_function(pin, gpioPPS_U1RX);
-        case 1: return gpio_set_input_function(pin, gpioPPS_U1RX);
-        case 2: return gpio_set_input_function(pin, gpioPPS_U1RX);
-        case 3: return gpio_set_input_function(pin, gpioPPS_U1RX);
-        case 4: return gpio_set_input_function(pin, gpioPPS_U1RX);
-        case 5: return gpio_set_input_function(pin, gpioPPS_U1RX);
+        case 1: return gpio_set_input_function(pin, gpioPPS_U2RX);
+        case 2: return gpio_set_input_function(pin, gpioPPS_U3RX);
+        case 3: return gpio_set_input_function(pin, gpioPPS_U4RX);
+        case 4: return gpio_set_input_function(pin, gpioPPS_U5RX);
+        case 5: return gpio_set_input_function(pin, gpioPPS_U6RX);
     }
     return 0;
 }
@@ -111,6 +118,7 @@ static inline uint32_t uart_calculate_baud(uint32_t baud, uint8_t *highspeed) {
         brg = ((cpu_get_peripheral_clock() / 4 / baud) - 1);
         highspeed = 1;
     }
+    return brg;
 }
 
 /**
@@ -175,7 +183,7 @@ int uart_open(uint8_t uart) {
     uartControlData[uart].txBuffer = xStreamBufferCreate(64, 0);
     uartControlData[uart].rxBuffer = xStreamBufferCreate(64, 0);
 
-    if (xTaskCreate(uart_control_task, uartControlData[uart].name, configMINIMAL_STACK_SIZE, (void *)&uart, tskIDLE_PRIORITY, &uartControlData[uart].task) == pdPASS) {
+    if (xTaskCreate(uart_control_task, uartControlData[uart].name, configMINIMAL_STACK_SIZE, (void *)&uart, tskIDLE_PRIORITY, &uartControlData[uart].task) != pdPASS) {
         uartControlData[uart].task = NULL;
         return 0;
     }
@@ -188,16 +196,17 @@ int uart_open(uint8_t uart) {
 //    cpu_clear_interrupt_flag(uartControlData[uart].faultVector);
     cpu_set_interrupt_enable(uartControlData[uart].rxVector);
 
-    uartControlData[uart].reg->sta.set = (1 << _U1STA_UTXEN_MASK) | (1 << _U1STA_URXEN_MASK);
-    uartControlData[uart].reg->mode.set = (1 << _UABMODE_ON_MASK);
+    uartControlData[uart].reg->sta.set = (1 << 12) | (1 << 10);
+    uartControlData[uart].reg->mode.set = (1 << 15);
+
     return 1;
 }
 
 int uart_close(uint8_t uart) {
     if (uart >= __CHIP_HAS_UART) return 0;
     if (uartControlData[uart].task == NULL) return 0;
-    uartControlData[uart].reg->sta.clr = (1 << _U1STA_UTXEN_MASK) | (1 << _U1STA_URXEN_MASK);
-    uartControlData[uart].reg->mode.clr = (1 << _UABMODE_ON_MASK);
+    uartControlData[uart].reg->sta.clr = (1 << 12) | (1 << 10);
+    uartControlData[uart].reg->mode.clr = (1 << 15);
     cpu_clear_interrupt_enable(uartControlData[uart].txVector);
     cpu_clear_interrupt_enable(uartControlData[uart].rxVector);
     cpu_clear_interrupt_enable(uartControlData[uart].faultVector);
@@ -259,9 +268,8 @@ static inline void uart_handle_tx(uint8_t uart) {
     }
 
     uint8_t b = 0;
-
     xStreamBufferReceiveFromISR(uartControlData[uart].txBuffer, &b, 1, NULL);
-    uartControlData[uart].reg->rxreg.reg = b;
+    uartControlData[uart].reg->txreg.reg = b;
 }
 
 

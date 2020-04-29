@@ -17,6 +17,7 @@ int HardwareSerial::available() {
 }
 
 int HardwareSerial::availableForWrite() {
+    return 1;
 }
 
 int HardwareSerial::peek() {

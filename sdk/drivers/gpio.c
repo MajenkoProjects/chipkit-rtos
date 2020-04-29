@@ -136,6 +136,7 @@ const struct ppsPinMapping ppsPinMappingPins[] = {
 
 // * - not remappable, but space in the table for them
 const struct ppsPinMapping ppsPinMappingFunctions[] = {
+    // 0 - 9
     { 0b00000000, 0 }, // INT0R *   1400
     { 0b10000000, 0 }, // INT1R     1404
     { 0b01000000, 0 }, // INT2R     1408
@@ -146,6 +147,8 @@ const struct ppsPinMapping ppsPinMappingFunctions[] = {
     { 0b01000000, 0 }, // T3CKR     141C
     { 0b10000000, 0 }, // T4CKR     1420
     { 0b00100000, 0 }, // T5CKR     1424
+
+    // 10 - 19
     { 0b00010000, 0 }, // T6CKR     1428
     { 0b00100000, 0 }, // T7CKR     142C
     { 0b01000000, 0 }, // T8CKR     1430
@@ -156,6 +159,8 @@ const struct ppsPinMapping ppsPinMappingFunctions[] = {
     { 0b00100000, 0 }, // IC4R      1444
     { 0b01000000, 0 }, // IC5R      1448
     { 0b10000000, 0 }, // IC6R      144C
+
+    // 20 - 29
     { 0b00010000, 0 }, // IC7R      1450
     { 0b00100000, 0 }, // IC8R      1454
     { 0b01000000, 0 }, // IC9R      1458
@@ -166,6 +171,8 @@ const struct ppsPinMapping ppsPinMappingFunctions[] = {
     { 0b01000000, 0 }, // U1CTSR    146C
     { 0b01000000, 0 }, // U2RXR     1470
     { 0b00010000, 0 }, // U2CTSR    1474
+
+    // 30 - 39
     { 0b00100000, 0 }, // U3RXR     1478
     { 0b10000000, 0 }, // U3CTSR    147C
     { 0b10000000, 0 }, // U4RXR     1480
@@ -176,6 +183,8 @@ const struct ppsPinMapping ppsPinMappingFunctions[] = {
     { 0b00010000, 0 }, // U6CTSR    1494
     { 0b00000011, 0b0101 }, // SDO1²     1498 
     { 0b00010000, 0 }, // SDI1R     149C
+
+    // 40 - 49
     { 0b01000100, 0b0101 }, // SS1R      14A0
     { 0b00000011, 0b0110 }, // SDO2²     14A4 
     { 0b00100000, 0 }, // SDI2R     14A8
@@ -186,6 +195,8 @@ const struct ppsPinMapping ppsPinMappingFunctions[] = {
     { 0b00001010, 0b1000 }, // SDO4²     14BC 
     { 0b00100000, 0 }, // SDI4R     14C0
     { 0b01000100, 0b1000 }, // SS4R      14C4
+
+    // 50 - 59
     { 0b00000011, 0b1001 }, // SDO5²     14C8 
     { 0b00010000, 0 }, // SDI5R     14CC
     { 0b01000100, 0b1001 }, // SS5R      14D0
@@ -196,6 +207,8 @@ const struct ppsPinMapping ppsPinMappingFunctions[] = {
     { 0b01000000, 0 }, // C2RXR     14E4
     { 0b00010000, 0 }, // REFCLKI1R 14E8
     { 0b00000000, 0 }, // ???? *    14EC
+
+    // 60 - 69
     { 0b10000000, 0 }, // REFCLKI3R 14F0
     { 0b00100000, 0 }, // REFCLKI4R 14F4
     { 0b00000010, 0b0001 }, // U1TX²
@@ -206,6 +219,8 @@ const struct ppsPinMapping ppsPinMappingFunctions[] = {
     { 0b00000100, 0b0001 }, // U3RTS²
     { 0b00000100, 0b0010 }, // U4TX²
     { 0b00000001, 0b0010 }, // U4RTS²
+
+    // 70 - 79
     { 0b00000010, 0b0011 }, // U5TX²
     { 0b00001000, 0b0011 }, // U5RTS²
     { 0b00001100, 0b0100 }, // U6TX²
@@ -216,6 +231,8 @@ const struct ppsPinMapping ppsPinMappingFunctions[] = {
     { 0b00000010, 0b1011 }, // OC4²
     { 0b00000100, 0b1011 }, // OC5²
     { 0b00000001, 0b1100 }, // OC6²
+
+    // 80 - 89
     { 0b00000010, 0b1100 }, // OC7²
     { 0b00000100, 0b1100 }, // OC8²
     { 0b00001000, 0b1101 }, // OC9²
@@ -226,6 +243,8 @@ const struct ppsPinMapping ppsPinMappingFunctions[] = {
     { 0b00000100, 0b1110 }, // C1OUT²
     { 0b00000001, 0b1110 }, // C2OUT²
     { 0b00000001, 0b1111 }, // C1TX²
+
+    // 90 - 99
     { 0b00001000, 0b1111 }, // C2TX²
 };
 #define NUM_PPS_FUNCTIONS (sizeof(ppsPinMappingFunctions) / sizeof(ppsPinMappingFunctions[0]))
@@ -286,7 +305,6 @@ void gpio_write(uint8_t pin, uint8_t val) {
 }
 
 int gpio_set_input_function(uint8_t pin, uint8_t function) {
-    if (pin >= NUM_DIGITAL_PINS) return 0;
     if (pin >= NUM_PPS_PINS) return 0;
     if (function >= NUM_PPS_FUNCTIONS) return 0;
     if (((ppsPinMappingPins[pin].groups & ppsPinMappingFunctions[function].groups) & 0xF0) == 0) return 0;
@@ -296,17 +314,16 @@ int gpio_set_input_function(uint8_t pin, uint8_t function) {
 }
 
 int gpio_set_output_function(uint8_t pin, uint8_t function) {
-    if (pin >= NUM_DIGITAL_PINS) return 0;
     if (pin >= NUM_PPS_PINS) return 0;
     if (function >= NUM_PPS_FUNCTIONS) return 0;
     if (((ppsPinMappingPins[pin].groups & ppsPinMappingFunctions[function].groups) & 0x0F) == 0) return 0;
     volatile uint32_t *mappingRegisters = (volatile uint32_t *)0xbf801500;
-    mappingRegisters[pin] = ppsPinMappingPins[function].setting;
+    mappingRegisters[pin] = ppsPinMappingFunctions[function].setting;
+//if ( == gpioF5) gpio_write(gpioE6, 1);
     return 1;
 }
 
 int gpio_clear_output_function(uint8_t pin) {
-    if (pin >= NUM_DIGITAL_PINS) return 0;
     if (pin >= NUM_PPS_PINS) return 0;
     if ((ppsPinMappingPins[pin].groups & 0x0F) != 0) {
         volatile uint32_t *pinMappingRegisters = (volatile uint32_t *)0xbf801500;
