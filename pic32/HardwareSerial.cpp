@@ -22,6 +22,7 @@ int HardwareSerial::availableForWrite() {
 }
 
 int HardwareSerial::peek() {
+    return uart_peek(_uart);
 }
 
 int HardwareSerial::read() {
@@ -29,11 +30,18 @@ int HardwareSerial::read() {
 }
 
 void HardwareSerial::flush() {
+    uart_flush(_uart);
 }
 
 void HardwareSerial::purge() {
+    uart_purge(_uart);
 }
 
 size_t HardwareSerial::write(uint8_t val) {
     return uart_write(_uart, val);
 }
+
+size_t HardwareSerial::write(const uint8_t *buffer, size_t size) {
+    return uart_write_bytes(_uart, buffer, size);
+}
+

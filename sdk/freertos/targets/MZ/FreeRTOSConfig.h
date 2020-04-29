@@ -48,8 +48,6 @@
 #define configUSE_IDLE_HOOK						0
 #define configUSE_TICK_HOOK						0
 #define configTICK_RATE_HZ						( ( TickType_t ) 1000 )
-#define configCPU_CLOCK_HZ						( 200000000UL )
-#define configPERIPHERAL_CLOCK_HZ				( 40000000UL )
 #define configMAX_PRIORITIES					( 5UL )
 #define configMINIMAL_STACK_SIZE				( 190 )
 #define configISR_STACK_SIZE					( 400 )
@@ -68,12 +66,14 @@
 #define configUSE_COUNTING_SEMAPHORES			1
 #define configGENERATE_RUN_TIME_STATS			0
 
+#define configUART_TX_BUFFERED                  0
+
 /* Enable support for Task based FPU operations. This will enable support for
 FPU context saving during switches only on architectures with hardware FPU.
 
 NOTE: This constant is defined in the project options as configurations are 
-provided that both enable and disable floating point support. 
-#define configUSE_TASK_FPU_SUPPORT				0 */
+provided that both enable and disable floating point support.  */
+#define configUSE_TASK_FPU_SUPPORT				1
 
 /* Co-routine definitions. */
 #define configUSE_CO_ROUTINES					0

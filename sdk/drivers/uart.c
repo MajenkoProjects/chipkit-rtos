@@ -19,7 +19,12 @@ typedef struct {
 } p32_uart;
 
 static struct uartControlDataStruct {
+#if (configUART_TX_BUFFERED == 1)
+#define QUEUES NULL, NULL
     QueueHandle_t txBuffer;
+#else
+#define QUEUES NULL
+#endif
     QueueHandle_t rxBuffer;
     const char *name;
     uint8_t txVector;
@@ -30,24 +35,46 @@ static struct uartControlDataStruct {
 
 static struct uartControlDataStruct uartControlData[__CHIP_HAS_UART] = {
 #if (__CHIP_HAS_UART > 0)
-    { NULL, NULL, "UART0", _UART1_TX_VECTOR, _UART1_RX_VECTOR, _UART1_FAULT_VECTOR, &U1MODE },
+    { QUEUES, "UART0", _UART1_TX_VECTOR, _UART1_RX_VECTOR, _UART1_FAULT_VECTOR, &U1MODE },
 #endif
 #if (__CHIP_HAS_UART > 1)
-    { NULL, NULL, "UART1", _UART2_TX_VECTOR, _UART2_RX_VECTOR, _UART2_FAULT_VECTOR, &U2MODE },
+    { QUEUES, "UART1", _UART2_TX_VECTOR, _UART2_RX_VECTOR, _UART2_FAULT_VECTOR, &U2MODE },
 #endif
 #if (__CHIP_HAS_UART > 2)
-    { NULL, NULL, "UART2", _UART3_TX_VECTOR, _UART3_RX_VECTOR, _UART3_FAULT_VECTOR, &U3MODE },
+    { QUEUES, "UART2", _UART3_TX_VECTOR, _UART3_RX_VECTOR, _UART3_FAULT_VECTOR, &U3MODE },
 #endif
 #if (__CHIP_HAS_UART > 3)
-    { NULL, NULL, "UART3", _UART4_TX_VECTOR, _UART4_RX_VECTOR, _UART4_FAULT_VECTOR, &U4MODE },
+    { QUEUES, "UART3", _UART4_TX_VECTOR, _UART4_RX_VECTOR, _UART4_FAULT_VECTOR, &U4MODE },
 #endif
 #if (__CHIP_HAS_UART > 4)
-    { NULL, NULL, "UART4", _UART5_TX_VECTOR, _UART5_RX_VECTOR, _UART5_FAULT_VECTOR, &U5MODE },
+    { QUEUES, "UART4", _UART5_TX_VECTOR, _UART5_RX_VECTOR, _UART5_FAULT_VECTOR, &U5MODE },
 #endif
 #if (__CHIP_HAS_UART > 5)
-    { NULL, NULL, "UART5", _UART6_TX_VECTOR, _UART6_RX_VECTOR, _UART6_FAULT_VECTOR, &U6MODE },
+    { QUEUES, "UART5", _UART6_TX_VECTOR, _UART6_RX_VECTOR, _UART6_FAULT_VECTOR, &U6MODE },
 #endif
 };
+
+void uart_purge(uint8_t uart) {
+    xQueueReset(uartControlData[uart].rxBuffer);
+}
+
+#if (configUART_TX_BUFFERED == 1)
+void uart_flush(uint8_t uart) {
+    if (uartControlData[uart].txBuffer == NULL) return 0;
+    while (uxQueueMessagesWaiting(uartControlData[uart].txBuffer) > 0) {
+        vTaskDelay(1);
+    }
+    while ((uartControlData[uart].reg->sta.reg & (1 << 8)) != 0) {
+        vTaskDelay(1);
+    }
+}
+#else
+void uart_flush(uint8_t uart) {
+    while ((uartControlData[uart].reg->sta.reg & (1 << 8)) != 0) {
+        vTaskDelay(1);
+    }
+}
+#endif
 
 int uart_rx_available(uint8_t uart) {
     if (uartControlData[uart].rxBuffer == NULL) return 0;
@@ -55,11 +82,31 @@ int uart_rx_available(uint8_t uart) {
     return r;
 }
 
+#if (configUART_TX_BUFFERED == 1)
 int uart_tx_available(uint8_t uart) {
     if (uartControlData[uart].txBuffer == NULL) return 0;
     return uxQueueSpacesAvailable(uartControlData[uart].txBuffer);
 }
+#else
+int uart_tx_available(uint8_t uart) {
+    if ((uartControlData[uart].reg->sta.reg & (1 << 9)) == 0) {
+        return 1;
+    }
+    return 0;
+}
+#endif
 
+int uart_write_bytes(uint8_t uart, const uint8_t *bytes, size_t len) {
+    int count = 0;
+    for (int i = 0; i < len; i++) {
+        int r = uart_write(uart, bytes[i]);
+        if (r == 0) break;
+        count++;
+    }
+    return count;
+}
+
+#if (configUART_TX_BUFFERED == 1)
 int uart_write(uint8_t uart, uart_queue_t byte) {
     if (uartControlData[uart].txBuffer == NULL) return 0;
     if (xQueueSendToBack(uartControlData[uart].txBuffer, &byte, portMAX_DELAY) == pdPASS) {
@@ -74,6 +121,17 @@ int uart_write(uint8_t uart, uart_queue_t byte) {
     }
     return 0;
 }
+#else
+int uart_write(uint8_t uart, uart_queue_t byte) {
+    while ((uartControlData[uart].reg->sta.reg & (1 << 9)) != 0) {
+        vTaskDelay(1);
+    }
+
+    uartControlData[uart].reg->txreg.reg = byte;
+    return 1;
+}
+#endif
+
 
 int uart_read(uint8_t uart) {
     if (uxQueueMessagesWaiting(uartControlData[uart].rxBuffer) == 0) {
@@ -81,6 +139,15 @@ int uart_read(uint8_t uart) {
     }
     uart_queue_t b = 0;
     xQueueReceive(uartControlData[uart].rxBuffer, &b, 0);
+    return b;
+}
+
+int uart_peek(uint8_t uart) {
+    if (uxQueueMessagesWaiting(uartControlData[uart].rxBuffer) == 0) {
+        return -1;
+    }
+    uart_queue_t b = 0;
+    xQueuePeek(uartControlData[uart].rxBuffer, &b, 0);
     return b;
 }
 
@@ -178,16 +245,20 @@ int uart_set_format(uint8_t uart, uint8_t format) {
 int uart_open(uint8_t uart) {
     if (uart >= __CHIP_HAS_UART) return 0;
 
+#if (configUART_TX_BUFFERED == 1)
     uartControlData[uart].txBuffer = xQueueCreate(64, sizeof(uart_queue_t));
+    cpu_set_interrupt_priority(uartControlData[uart].txVector, 2, 0);
+    cpu_clear_interrupt_flag(uartControlData[uart].txVector);
+#endif
+
     uartControlData[uart].rxBuffer = xQueueCreate(64, sizeof(uart_queue_t));
 
-    cpu_set_interrupt_priority(uartControlData[uart].txVector, 2, 0);
     cpu_set_interrupt_priority(uartControlData[uart].rxVector, 2, 0);
-//    cpu_set_interrupt_priority(uartControlData[uart].faultVector, 2, 0);
-    cpu_clear_interrupt_flag(uartControlData[uart].txVector);
     cpu_clear_interrupt_flag(uartControlData[uart].rxVector);
-//    cpu_clear_interrupt_flag(uartControlData[uart].faultVector);
     cpu_set_interrupt_enable(uartControlData[uart].rxVector);
+
+//    cpu_set_interrupt_priority(uartControlData[uart].faultVector, 2, 0);
+//    cpu_clear_interrupt_flag(uartControlData[uart].faultVector);
 
     uartControlData[uart].reg->sta.set = (1 << 12) | (1 << 10);
     uartControlData[uart].reg->mode.set = (1 << 15);
@@ -199,14 +270,18 @@ int uart_close(uint8_t uart) {
     if (uart >= __CHIP_HAS_UART) return 0;
     uartControlData[uart].reg->sta.clr = (1 << 12) | (1 << 10);
     uartControlData[uart].reg->mode.clr = (1 << 15);
+#if (configUART_TX_BUFFERED == 1)
     cpu_clear_interrupt_enable(uartControlData[uart].txVector);
-    cpu_clear_interrupt_enable(uartControlData[uart].rxVector);
-    cpu_clear_interrupt_enable(uartControlData[uart].faultVector);
     cpu_set_interrupt_priority(uartControlData[uart].txVector, 0, 0);
-    cpu_set_interrupt_priority(uartControlData[uart].rxVector, 0, 0);
-    cpu_set_interrupt_priority(uartControlData[uart].faultVector, 0, 0);
     vQueueDelete(uartControlData[uart].txBuffer);
+#endif
+
+    cpu_clear_interrupt_enable(uartControlData[uart].rxVector);
+    cpu_set_interrupt_priority(uartControlData[uart].rxVector, 0, 0);
     vQueueDelete(uartControlData[uart].rxBuffer);
+
+    cpu_clear_interrupt_enable(uartControlData[uart].faultVector);
+    cpu_set_interrupt_priority(uartControlData[uart].faultVector, 0, 0);
     return 1;
 }
 
@@ -246,6 +321,7 @@ void __ISR(_UART6_RX_VECTOR, IPL2) uart_5_rx() { uart_handle_rx(5); }
 
 
 
+#if (configUART_TX_BUFFERED == 1)
 static inline void uart_handle_tx(uint8_t uart) {
     cpu_clear_interrupt_flag(uartControlData[uart].txVector);
 
@@ -283,5 +359,5 @@ void __ISR(_UART5_TX_VECTOR, IPL2) uart_4_tx() { uart_handle_tx(4); }
 #if (__CHIP_HAS_UART > 5)
 void __ISR(_UART6_TX_VECTOR, IPL2) uart_5_tx() { uart_handle_tx(5); }
 #endif
-
+#endif
 

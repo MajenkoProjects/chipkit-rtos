@@ -22,16 +22,20 @@ extern "C" {
 typedef uint16_t uart_queue_t;
 
 
-int uart_rx_available(uint8_t uart);
-int uart_tx_available(uint8_t uart);
-int uart_read(uint8_t uart);
-int uart_write(uint8_t uart, uart_queue_t byte);
-int uart_set_tx_pin(uint8_t uart, uint8_t pin);
-int uart_set_rx_pin(uint8_t uart, uint8_t pin);
-int uart_set_baud(uint8_t uart, uint32_t baud);
-int uart_set_format(uint8_t uart, uint8_t format);
-int uart_open(uint8_t uart);
-int uart_close(uint8_t uart);
+extern int uart_rx_available(uint8_t uart);
+extern int uart_tx_available(uint8_t uart);
+extern int uart_peek(uint8_t uart);
+extern int uart_read(uint8_t uart);
+extern int uart_write_bytes(uint8_t uart, const uint8_t *bytes, size_t len);
+extern int uart_write(uint8_t uart, uart_queue_t byte);
+extern int uart_set_tx_pin(uint8_t uart, uint8_t pin);
+extern int uart_set_rx_pin(uint8_t uart, uint8_t pin);
+extern int uart_set_baud(uint8_t uart, uint32_t baud);
+extern int uart_set_format(uint8_t uart, uint8_t format);
+extern int uart_open(uint8_t uart);
+extern int uart_close(uint8_t uart);
+extern void uart_flush(uint8_t uart);
+extern void uart_purge(uint8_t uart);
 
 #ifdef __cplusplus
 }
