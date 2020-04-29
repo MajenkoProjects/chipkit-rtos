@@ -17,6 +17,8 @@
 extern "C" {
 #endif
 
+int uart_rx_available(uint8_t uart);
+int uart_tx_available(uint8_t uart);
 int uart_read(uint8_t uart);
 int uart_write(uint8_t uart, uint8_t byte);
 int uart_set_tx_pin(uint8_t uart, uint8_t pin);

@@ -131,7 +131,7 @@ int main() {
 
     init();
 
-    xTaskCreate(arduinoTask, "Arduino", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 2, NULL);
+    xTaskCreate(arduinoTask, "Arduino", 2048, NULL, tskIDLE_PRIORITY + 2, NULL);
     
     vTaskStartScheduler();
 

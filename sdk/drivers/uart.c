@@ -50,15 +50,30 @@ static struct uartControlDataStruct uartControlData[__CHIP_HAS_UART] = {
 #endif
 };
 
+int uart_rx_available(uint8_t uart) {
+    if (uartControlData[uart].rxBuffer == NULL) return 0;
+    if (uartControlData[uart].task == NULL) return 0;
+    int r = xStreamBufferBytesAvailable(uartControlData[uart].rxBuffer);
+    return r;
+}
+
+int uart_tx_available(uint8_t uart) {
+    if (uartControlData[uart].txBuffer == NULL) return 0;
+    if (uartControlData[uart].task == NULL) return 0;
+    return xStreamBufferSpacesAvailable(uartControlData[uart].txBuffer);
+}
+
 int uart_write(uint8_t uart, uint8_t byte) {
     if (uartControlData[uart].txBuffer == NULL) return 0;
     if (uartControlData[uart].task == NULL) return 0;
-    int ret = xStreamBufferSend(uartControlData[uart].txBuffer, &byte, 1, pdMS_TO_TICKS(10000));
+    int ret = xStreamBufferSend(uartControlData[uart].txBuffer, &byte, 1, portMAX_DELAY);
     if (ret > 0) {
-
         xTaskNotify(uartControlData[uart].task, 0, eNoAction);
     }
-    return 1; // ret;
+    // For some reason this is needed for the steam buffer to synchronise between
+    // threads and ISRs.
+    vTaskDelay(1);
+    return ret;
 }
 
 int uart_read(uint8_t uart) {
@@ -164,12 +179,11 @@ int uart_set_format(uint8_t uart, uint8_t format) {
 static void uart_control_task(void *params) {
     uint8_t *paramsu8 = (uint8_t *)params;
     uint8_t uart = *paramsu8;
-
     while (1) {
         xTaskNotifyWait(0, 0, NULL, portMAX_DELAY);
         if (xStreamBufferBytesAvailable(uartControlData[uart].txBuffer) > 0) {
-            cpu_set_interrupt_enable(uartControlData[uart].txVector);
             cpu_set_interrupt_flag(uartControlData[uart].txVector);
+            cpu_set_interrupt_enable(uartControlData[uart].txVector);
         }
     }
 }
@@ -180,10 +194,10 @@ int uart_open(uint8_t uart) {
         return 0;
     }
 
-    uartControlData[uart].txBuffer = xStreamBufferCreate(64, 0);
-    uartControlData[uart].rxBuffer = xStreamBufferCreate(64, 0);
+    uartControlData[uart].txBuffer = xStreamBufferCreate(64, 1);
+    uartControlData[uart].rxBuffer = xStreamBufferCreate(64, 1);
 
-    if (xTaskCreate(uart_control_task, uartControlData[uart].name, configMINIMAL_STACK_SIZE, (void *)&uart, tskIDLE_PRIORITY, &uartControlData[uart].task) != pdPASS) {
+    if (xTaskCreate(uart_control_task, uartControlData[uart].name, 256, (void *)&uart, tskIDLE_PRIORITY, &uartControlData[uart].task) != pdPASS) {
         uartControlData[uart].task = NULL;
         return 0;
     }
@@ -222,10 +236,12 @@ int uart_close(uint8_t uart) {
 
 static void inline uart_handle_rx(uint8_t uart) {
     cpu_clear_interrupt_flag(uartControlData[uart].rxVector);
-    if (uartControlData[uart].task == NULL) return;
-    uint8_t data = uartControlData[uart].reg->rxreg.reg;
-    if (xStreamBufferSpacesAvailable(uartControlData[uart].rxBuffer) > 0) {
-        xStreamBufferSendFromISR(uartControlData[uart].rxBuffer, (const void *)&data, 1, NULL);
+    if (uartControlData[uart].reg->sta.reg & 1) {
+        if (uartControlData[uart].task == NULL) return;
+        uint32_t data = uartControlData[uart].reg->rxreg.reg;
+        if (xStreamBufferSpacesAvailable(uartControlData[uart].rxBuffer) > 0) {
+            xStreamBufferSendFromISR(uartControlData[uart].rxBuffer, (const void *)&data, 1, NULL);
+        }
     }
 }
 

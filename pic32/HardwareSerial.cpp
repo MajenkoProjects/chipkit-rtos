@@ -14,10 +14,11 @@ void HardwareSerial::end() {
 }
 
 int HardwareSerial::available() {
+    return uart_rx_available(_uart);
 }
 
 int HardwareSerial::availableForWrite() {
-    return 1;
+    return uart_tx_available(_uart);
 }
 
 int HardwareSerial::peek() {
