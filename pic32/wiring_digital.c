@@ -52,3 +52,23 @@ uint8_t digitalRead(int pin) {
     if (gpio < 0) return 0;
     return gpio_read(gpio);
 }
+
+void attachInterrupt(uint8_t pin, void (*callback)(), int mode) {
+    int gpio = pinToGPIO(pin);
+    if (gpio < 0) return;
+    if (mode == RISING) {
+        gpio_disconnect_interrupt(gpio, gpioINTERRUPT_FALLING);
+        gpio_connect_interrupt(gpio, gpioINTERRUPT_RISING, (gpioISR_t)callback);
+    } else if (mode == FALLING) {
+        gpio_disconnect_interrupt(gpio, gpioINTERRUPT_RISING);
+        gpio_connect_interrupt(gpio, gpioINTERRUPT_FALLING, (gpioISR_t)callback);
+    } else if (mode == CHANGE) {
+        gpio_connect_interrupt(gpio, gpioINTERRUPT_FALLING, (gpioISR_t)callback);
+        gpio_connect_interrupt(gpio, gpioINTERRUPT_RISING, (gpioISR_t)callback);
+    }
+}
+
+void detachInterrupt(uint8_t pin) {
+    gpio_disconnect_interrupt(gpio, gpio_INTERRUPT_FALLING);
+    gpio_disconnect_interrupt(gpio, gpio_INTERRUPT_RISING);
+}
