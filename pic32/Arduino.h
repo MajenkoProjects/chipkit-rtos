@@ -33,6 +33,7 @@ extern "C" {
 
 extern void delay(uint32_t ms);
 extern uint32_t millis();
+extern uint32_t micros();
 
 extern void pinMode(int, int);
 extern void digitalWrite(int, int);

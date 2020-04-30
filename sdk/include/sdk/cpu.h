@@ -16,9 +16,9 @@ typedef struct {
 } p32_regbuf;
 
 // These are done as macros instead of functions to make them super-fast
-#define cpu_ct_read_count(dest) __asm__ __volatile__("mfc0 %0,$9" : "=r" (dest))
-#define cpu_ct_read_compare(dest) __asm__ __volatile__("mfc0 %0,$11" : "=r" (dest))
-#define cpu_ct_write_compare(src) __asm__ __volatile__("mtc0 %0,$11" : : "r" (src))
+#define cpu_ct_read_count(dest) asm volatile("mfc0 %0,$9" : "=r" (dest))
+#define cpu_ct_read_compare(dest) asm volatile("mfc0 %0,$11" : "=r" (dest))
+#define cpu_ct_write_compare(src) asm volatile("mtc0 %0,$11" : : "r" (src))
 
 #ifdef __cplusplus
 extern "C" {
