@@ -3,6 +3,9 @@
 
 #include <stdint.h>
 
+typedef void (*gpioISR_t)(uint8_t pin, uint8_t state);
+typedef volatile uint32_t *sfr_t;
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -13,13 +16,15 @@ extern uint8_t gpio_read(uint8_t);
 extern int gpio_set_input_function(uint8_t pin, uint8_t function);
 extern int gpio_set_output_function(uint8_t pin, uint8_t function);
 extern int gpio_clear_output_function(uint8_t pin);
-
+extern int gpio_connect_interrupt(uint8_t pin, uint8_t type, gpioISR_t callback);
+extern int gpio_disconnect_interrupt(uint8_t pin, uint8_t type);
 
 #ifdef __cplusplus
 }
 #endif
 
-typedef volatile uint32_t *sfr_t;
+#define gpioINTERRUPT_RISING 1
+#define gpioINTERRUPT_FALLING 0
 
 #define gpioPIN_TO_REGSUB(P, R, S)  ((sfr_t)(&R ## B ## S + (((P)/16 * 0x40)) - 0x40))
 #define gpioPIN_TO_REG(P, R)        ((sfr_t)(&R ## B + (((P)/16 * 0x40)) - 0x40))
@@ -171,39 +176,39 @@ typedef volatile uint32_t *sfr_t;
 #define gpioH14                 0x7E
 #define gpioH15                 0x7F
 
-#define gpioI0                  0x80
-#define gpioI1                  0x81
-#define gpioI2                  0x82
-#define gpioI3                  0x83
-#define gpioI4                  0x84
-#define gpioI5                  0x85
-#define gpioI6                  0x86
-#define gpioI7                  0x87
-#define gpioI8                  0x88
-#define gpioI9                  0x89
-#define gpioI10                 0x8A
-#define gpioI11                 0x8B
-#define gpioI12                 0x8C
-#define gpioI13                 0x8D
-#define gpioI14                 0x8E
-#define gpioI15                 0x8F
+#define gpioJ0                  0x80
+#define gpioJ1                  0x81
+#define gpioJ2                  0x82
+#define gpioJ3                  0x83
+#define gpioJ4                  0x84
+#define gpioJ5                  0x85
+#define gpioJ6                  0x86
+#define gpioJ7                  0x87
+#define gpioJ8                  0x88
+#define gpioJ9                  0x89
+#define gpioJ10                 0x8A
+#define gpioJ11                 0x8B
+#define gpioJ12                 0x8C
+#define gpioJ13                 0x8D
+#define gpioJ14                 0x8E
+#define gpioJ15                 0x8F
 
-#define gpioJ0                  0x90
-#define gpioJ1                  0x91
-#define gpioJ2                  0x92
-#define gpioJ3                  0x93
-#define gpioJ4                  0x94
-#define gpioJ5                  0x95
-#define gpioJ6                  0x96
-#define gpioJ7                  0x97
-#define gpioJ8                  0x98
-#define gpioJ9                  0x99
-#define gpioJ10                 0x9A
-#define gpioJ11                 0x9B
-#define gpioJ12                 0x9C
-#define gpioJ13                 0x9D
-#define gpioJ14                 0x9E
-#define gpioJ15                 0x9F
+#define gpioK0                  0x90
+#define gpioK1                  0x91
+#define gpioK2                  0x92
+#define gpioK3                  0x93
+#define gpioK4                  0x94
+#define gpioK5                  0x95
+#define gpioK6                  0x96
+#define gpioK7                  0x97
+#define gpioK8                  0x98
+#define gpioK9                  0x99
+#define gpioK10                 0x9A
+#define gpioK11                 0x9B
+#define gpioK12                 0x9C
+#define gpioK13                 0x9D
+#define gpioK14                 0x9E
+#define gpioK15                 0x9F
 
 
 #define gpioPPS_INT0       0

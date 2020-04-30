@@ -1,8 +1,16 @@
 #include <Arduino.h>
 
+#include <sys/attribs.h>
+
 #include "sdk/gpio.h"
 #include "sdk/chipspec.h"
 
+struct interruptCallback {
+    gpioISR_t fallingEdge;
+    gpioISR_t risingEdge;
+};
+
+struct interruptCallback interruptPinCallback[__CHIP_MAX_GPIO + 1] = {0};
 
 static struct ppsPinMapping {
     uint8_t groups;
@@ -250,6 +258,7 @@ const struct ppsPinMapping ppsPinMappingFunctions[] = {
 #define NUM_PPS_FUNCTIONS (sizeof(ppsPinMappingFunctions) / sizeof(ppsPinMappingFunctions[0]))
 
 void gpio_set_mode(uint8_t pin, uint8_t mode) {
+    if (pin > __CHIP_MAX_GPIO) return;
 #if __CHIP_HAS_PPS
 
     gpio_clear_output_function(pin);
@@ -288,6 +297,7 @@ void gpio_set_mode(uint8_t pin, uint8_t mode) {
 }
 
 uint8_t gpio_read(uint8_t pin) {
+    if (pin > __CHIP_MAX_GPIO) return 0;
     uint16_t val = *gpioPIN_TO_REG(pin, PORT);
     if (val & gpioPIN_TO_BIT(pin)) {
         return 1;
@@ -297,6 +307,7 @@ uint8_t gpio_read(uint8_t pin) {
 }
 
 void gpio_write(uint8_t pin, uint8_t val) {
+    if (pin > __CHIP_MAX_GPIO) return;
     if (val == 0) {
         *gpioPIN_TO_REGSUB(pin, LAT, CLR) = gpioPIN_TO_BIT(pin);
     } else {
@@ -305,6 +316,7 @@ void gpio_write(uint8_t pin, uint8_t val) {
 }
 
 int gpio_set_input_function(uint8_t pin, uint8_t function) {
+    if (pin > __CHIP_MAX_GPIO) return 0;
     if (pin >= NUM_PPS_PINS) return 0;
     if (function >= NUM_PPS_FUNCTIONS) return 0;
     if (((ppsPinMappingPins[pin].groups & ppsPinMappingFunctions[function].groups) & 0xF0) == 0) return 0;
@@ -314,16 +326,17 @@ int gpio_set_input_function(uint8_t pin, uint8_t function) {
 }
 
 int gpio_set_output_function(uint8_t pin, uint8_t function) {
+    if (pin > __CHIP_MAX_GPIO) return 0;
     if (pin >= NUM_PPS_PINS) return 0;
     if (function >= NUM_PPS_FUNCTIONS) return 0;
     if (((ppsPinMappingPins[pin].groups & ppsPinMappingFunctions[function].groups) & 0x0F) == 0) return 0;
     volatile uint32_t *mappingRegisters = (volatile uint32_t *)0xbf801500;
     mappingRegisters[pin] = ppsPinMappingFunctions[function].setting;
-//if ( == gpioF5) gpio_write(gpioE6, 1);
     return 1;
 }
 
 int gpio_clear_output_function(uint8_t pin) {
+    if (pin > __CHIP_MAX_GPIO) return 0;
     if (pin >= NUM_PPS_PINS) return 0;
     if ((ppsPinMappingPins[pin].groups & 0x0F) != 0) {
         volatile uint32_t *pinMappingRegisters = (volatile uint32_t *)0xbf801500;
@@ -333,8 +346,299 @@ int gpio_clear_output_function(uint8_t pin) {
     return 0;
 }
 
-void gpio_unlock_pps() {
+int gpio_connect_interrupt(uint8_t pin, uint8_t type, gpioISR_t callback) {
+    if (pin > __CHIP_MAX_GPIO) return 0;
+
+    if (type == gpioINTERRUPT_FALLING) {
+        interruptPinCallback[pin].fallingEdge = callback;
+    } else if (type == gpioINTERRUPT_RISING) {
+        interruptPinCallback[pin].risingEdge = callback;
+    } else {
+        return 0;
+    }
+
+    *gpioPIN_TO_REGSUB(pin, CNEN, SET) = gpioPIN_TO_BIT(pin);
+
+    (void)gpio_read(pin);
+
+    int vector = 118 + (pin >> 4);
+    if (cpu_get_interrupt_enable(vector) == 0) {
+        *gpioPIN_TO_REGSUB(pin, CNCON, CLR) = (1 << 11); // EDGEDETECT
+        *gpioPIN_TO_REGSUB(pin, CNCON, SET) = (1 << 15); // ON
+        cpu_set_interrupt_priority(vector, 6, 0);
+        cpu_clear_interrupt_flag(vector);
+        cpu_set_interrupt_enable(vector);
+    }
+
+    return 1;
 }
 
-void gpio_lock_pps() {
+int gpio_disconnect_interrupt(uint8_t pin, uint8_t type) {
+    if (pin > __CHIP_MAX_GPIO) return 0; 
+
+    if (type == gpioINTERRUPT_FALLING) {
+        interruptPinCallback[pin].fallingEdge = NULL;
+        *gpioPIN_TO_REGSUB(pin, CNNE, CLR) = gpioPIN_TO_BIT(pin);
+    } else if (type == gpioINTERRUPT_RISING) { 
+        interruptPinCallback[pin].risingEdge = NULL;
+        *gpioPIN_TO_REGSUB(pin, CNEN, CLR) = gpioPIN_TO_BIT(pin);
+    } else {
+        return 0;
+    }
+
+    if ((interruptPinCallback[pin].fallingEdge == NULL) && (interruptPinCallback[pin].risingEdge == NULL)) {
+
+        uint16_t cnen = *gpioPIN_TO_REG(pin, CNEN);
+
+        if (cnen == 0) {
+            int vector = 118 + (pin >> 4);
+            if (cpu_get_interrupt_enable(vector) == 1) { 
+                *gpioPIN_TO_REGSUB(pin, CNCON, CLR) = (1 << 11); // EDGEDETECT
+                *gpioPIN_TO_REGSUB(pin, CNCON, CLR) = (1 << 15); // ON
+                cpu_clear_interrupt_enable(vector);
+            } 
+        }
+    }
+    return 1;
 }
+
+#if defined(_CHANGE_NOTICE_A_VECTOR)
+void __ISR(_CHANGE_NOTICE_A_VECTOR, IPL6) gpio_cn_a() {
+    static uint32_t storedState = 0;
+    cpu_clear_interrupt_flag(_CHANGE_NOTICE_A_VECTOR);
+
+    uint32_t currentState = PORTA & CNENA;
+    uint32_t changes = storedState ^ currentState;
+
+    storedState = currentState;
+
+    for (int i = 0; i < 16; i++) {
+        uint32_t bit = 1 << i;
+        if ((changes & bit) != 0) {
+            if (((currentState & bit) == 1) && (interruptPinCallback[0x00 + i].risingEdge != NULL)) {
+                interruptPinCallback[0x00 + i].risingEdge(0x00 + i, 1);
+            } else if (((currentState & bit) == 0) && (interruptPinCallback[0x00 + i].fallingEdge != NULL)) {
+                interruptPinCallback[0x00 + i].fallingEdge(0x00 + i, 0);
+            }
+        }
+        bit <<= 1;
+    }
+}
+#endif
+
+#if defined(_CHANGE_NOTICE_B_VECTOR)
+void __ISR(_CHANGE_NOTICE_B_VECTOR, IPL6) gpio_cn_b() {
+    static uint32_t storedState = 0;
+    cpu_clear_interrupt_flag(_CHANGE_NOTICE_B_VECTOR);
+
+    uint32_t currentState = PORTB & CNENB;
+    uint32_t changes = storedState ^ currentState;
+
+    storedState = currentState;
+
+    for (int i = 0; i < 16; i++) {
+        uint32_t bit = 1 << i;
+        if ((changes & bit) != 0) {
+            if (((currentState & bit) == 1) && (interruptPinCallback[0x10 + i].risingEdge != NULL)) {
+                interruptPinCallback[0x10 + i].risingEdge(0x10 + i, 1);
+            } else if (((currentState & bit) == 0) && (interruptPinCallback[0x10 + i].fallingEdge != NULL)) {
+                interruptPinCallback[0x10 + i].fallingEdge(0x10 + i, 0);
+            }
+        }
+        bit <<= 1;
+    }
+}
+#endif
+
+#if defined(_CHANGE_NOTICE_C_VECTOR)
+void __ISR(_CHANGE_NOTICE_C_VECTOR, IPL6) gpio_cn_c() {
+    static uint32_t storedState = 0;
+    cpu_clear_interrupt_flag(_CHANGE_NOTICE_C_VECTOR);
+
+    uint32_t currentState = PORTC & CNENC;
+    uint32_t changes = storedState ^ currentState;
+
+    storedState = currentState;
+
+    for (int i = 0; i < 16; i++) {
+        uint32_t bit = 1 << i;
+        if ((changes & bit) != 0) {
+            if (((currentState & bit) == 1) && (interruptPinCallback[0x20 + i].risingEdge != NULL)) {
+                interruptPinCallback[0x20 + i].risingEdge(0x20 + i, 1);
+            } else if (((currentState & bit) == 0) && (interruptPinCallback[0x20 + i].fallingEdge != NULL)) {
+                interruptPinCallback[0x20 + i].fallingEdge(0x20 + i, 0);
+            }
+        }
+        bit <<= 1;
+    }
+}
+#endif
+
+#if defined(_CHANGE_NOTICE_D_VECTOR)
+void __ISR(_CHANGE_NOTICE_D_VECTOR, IPL6) gpio_cn_d() {
+    static uint32_t storedState = 0;
+    cpu_clear_interrupt_flag(_CHANGE_NOTICE_D_VECTOR);
+
+    uint32_t currentState = PORTD & CNEND;
+    uint32_t changes = storedState ^ currentState;
+
+    storedState = currentState;
+
+    for (int i = 0; i < 16; i++) {
+        uint32_t bit = 1 << i;
+        if ((changes & bit) != 0) {
+            if (((currentState & bit) == 1) && (interruptPinCallback[0x30 + i].risingEdge != NULL)) {
+                interruptPinCallback[0x30 + i].risingEdge(0x30 + i, 1);
+            } else if (((currentState & bit) == 0) && (interruptPinCallback[0x30 + i].fallingEdge != NULL)) {
+                interruptPinCallback[0x30 + i].fallingEdge(0x30 + i, 0);
+            }
+        }
+        bit <<= 1;
+    }
+}
+#endif
+
+#if defined(_CHANGE_NOTICE_E_VECTOR)
+void __ISR(_CHANGE_NOTICE_E_VECTOR, IPL6) gpio_cn_e() {
+    static uint32_t storedState = 0;
+    cpu_clear_interrupt_flag(_CHANGE_NOTICE_E_VECTOR);
+
+    uint32_t currentState = PORTE & CNENE;
+    uint32_t changes = storedState ^ currentState;
+
+    storedState = currentState;
+
+    for (int i = 0; i < 16; i++) {
+        uint32_t bit = 1 << i;
+        if ((changes & bit) != 0) {
+            if (((currentState & bit) == 1) && (interruptPinCallback[0x40 + i].risingEdge != NULL)) {
+                interruptPinCallback[0x40 + i].risingEdge(0x40 + i, 1);
+            } else if (((currentState & bit) == 0) && (interruptPinCallback[0x40 + i].fallingEdge != NULL)) {
+                interruptPinCallback[0x40 + i].fallingEdge(0x40 + i, 0);
+            }
+        }
+        bit <<= 1;
+    }
+}
+#endif
+
+#if defined(_CHANGE_NOTICE_F_VECTOR)
+void __ISR(_CHANGE_NOTICE_F_VECTOR, IPL6) gpio_cn_f() {
+    static uint32_t storedState = 0;
+    cpu_clear_interrupt_flag(_CHANGE_NOTICE_F_VECTOR);
+
+    uint32_t currentState = PORTF & CNENF;
+    uint32_t changes = storedState ^ currentState;
+
+    storedState = currentState;
+
+    for (int i = 0; i < 16; i++) {
+        uint32_t bit = 1 << i;
+        if ((changes & bit) != 0) {
+            if (((currentState & bit) == 1) && (interruptPinCallback[0x50 + i].risingEdge != NULL)) {
+                interruptPinCallback[0x50 + i].risingEdge(0x50 + i, 1);
+            } else if (((currentState & bit) == 0) && (interruptPinCallback[0x50 + i].fallingEdge != NULL)) {
+                interruptPinCallback[0x50 + i].fallingEdge(0x50 + i, 0);
+            }
+        }
+        bit <<= 1;
+    }
+}
+#endif
+
+#if defined(_CHANGE_NOTICE_G_VECTOR)
+void __ISR(_CHANGE_NOTICE_G_VECTOR, IPL6) gpio_cn_g() {
+    static uint32_t storedState = 0;
+    cpu_clear_interrupt_flag(_CHANGE_NOTICE_G_VECTOR);
+
+    uint32_t currentState = PORTG & CNENG;
+    uint32_t changes = storedState ^ currentState;
+
+    storedState = currentState;
+
+    for (int i = 0; i < 16; i++) {
+        uint32_t bit = 1 << i;
+        if ((changes & bit) != 0) {
+            if (((currentState & bit) == 1) && (interruptPinCallback[0x60 + i].risingEdge != NULL)) {
+                interruptPinCallback[0x60 + i].risingEdge(0x60 + i, 1);
+            } else if (((currentState & bit) == 0) && (interruptPinCallback[0x60 + i].fallingEdge != NULL)) {
+                interruptPinCallback[0x60 + i].fallingEdge(0x60 + i, 0);
+            }
+        }
+        bit <<= 1;
+    }
+}
+#endif
+
+#if defined(_CHANGE_NOTICE_H_VECTOR)
+void __ISR(_CHANGE_NOTICE_H_VECTOR, IPL6) gpio_cn_h() {
+    static uint32_t storedState = 0;
+    cpu_clear_interrupt_flag(_CHANGE_NOTICE_H_VECTOR);
+
+    uint32_t currentState = PORTH & CNENH;
+    uint32_t changes = storedState ^ currentState;
+
+    storedState = currentState;
+
+    for (int i = 0; i < 16; i++) {
+        uint32_t bit = 1 << i;
+        if ((changes & bit) != 0) {
+            if (((currentState & bit) == 1) && (interruptPinCallback[0x70 + i].risingEdge != NULL)) {
+                interruptPinCallback[0x70 + i].risingEdge(0x70 + i, 1);
+            } else if (((currentState & bit) == 0) && (interruptPinCallback[0x70 + i].fallingEdge != NULL)) {
+                interruptPinCallback[0x70 + i].fallingEdge(0x70 + i, 0);
+            }
+        }
+        bit <<= 1;
+    }
+}
+#endif
+
+#if defined(_CHANGE_NOTICE_J_VECTOR)
+void __ISR(_CHANGE_NOTICE_J_VECTOR, IPL6) gpio_cn_j() {
+    static uint32_t storedState = 0;
+    cpu_clear_interrupt_flag(_CHANGE_NOTICE_J_VECTOR);
+
+    uint32_t currentState = PORTJ & CNENJ;
+    uint32_t changes = storedState ^ currentState;
+
+    storedState = currentState;
+
+    for (int i = 0; i < 16; i++) {
+        uint32_t bit = 1 << i;
+        if ((changes & bit) != 0) {
+            if (((currentState & bit) == 1) && (interruptPinCallback[0x80 + i].risingEdge != NULL)) {
+                interruptPinCallback[0x80 + i].risingEdge(0x80 + i, 1);
+            } else if (((currentState & bit) == 0) && (interruptPinCallback[0x80 + i].fallingEdge != NULL)) {
+                interruptPinCallback[0x80 + i].fallingEdge(0x80 + i, 0);
+            }
+        }
+        bit <<= 1;
+    }
+}
+#endif
+
+#if defined(_CHANGE_NOTICE_K_VECTOR)
+void __ISR(_CHANGE_NOTICE_K_VECTOR, IPL6) gpio_cn_k() {
+    static uint32_t storedState = 0;
+    cpu_clear_interrupt_flag(_CHANGE_NOTICE_K_VECTOR);
+
+    uint32_t currentState = PORTK & CNENK;
+    uint32_t changes = storedState ^ currentState;
+
+    storedState = currentState;
+
+    for (int i = 0; i < 16; i++) {
+        uint32_t bit = 1 << i;
+        if ((changes & bit) != 0) {
+            if (((currentState & bit) == 1) && (interruptPinCallback[0x90 + i].risingEdge != NULL)) {
+                interruptPinCallback[0x90 + i].risingEdge(0x90 + i, 1);
+            } else if (((currentState & bit) == 0) && (interruptPinCallback[0x90 + i].fallingEdge != NULL)) {
+                interruptPinCallback[0x90 + i].fallingEdge(0x90 + i, 0);
+            }
+        }
+        bit <<= 1;
+    }
+}
+#endif
+
