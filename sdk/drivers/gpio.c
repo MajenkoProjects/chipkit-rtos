@@ -415,7 +415,7 @@ void __ISR(_CHANGE_NOTICE_A_VECTOR, IPL6) gpio_cn_a() {
     for (int i = 0; i < 16; i++) {
         uint32_t bit = 1 << i;
         if ((changes & bit) != 0) {
-            if (((currentState & bit) == 1) && (interruptPinCallback[0x00 + i].risingEdge != NULL)) {
+            if (((currentState & bit) != 0) && (interruptPinCallback[0x00 + i].risingEdge != NULL)) {
                 interruptPinCallback[0x00 + i].risingEdge(0x00 + i, 1);
             } else if (((currentState & bit) == 0) && (interruptPinCallback[0x00 + i].fallingEdge != NULL)) {
                 interruptPinCallback[0x00 + i].fallingEdge(0x00 + i, 0);
@@ -439,7 +439,7 @@ void __ISR(_CHANGE_NOTICE_B_VECTOR, IPL6) gpio_cn_b() {
     for (int i = 0; i < 16; i++) {
         uint32_t bit = 1 << i;
         if ((changes & bit) != 0) {
-            if (((currentState & bit) == 1) && (interruptPinCallback[0x10 + i].risingEdge != NULL)) {
+            if (((currentState & bit) != 0) && (interruptPinCallback[0x10 + i].risingEdge != NULL)) {
                 interruptPinCallback[0x10 + i].risingEdge(0x10 + i, 1);
             } else if (((currentState & bit) == 0) && (interruptPinCallback[0x10 + i].fallingEdge != NULL)) {
                 interruptPinCallback[0x10 + i].fallingEdge(0x10 + i, 0);
@@ -463,7 +463,7 @@ void __ISR(_CHANGE_NOTICE_C_VECTOR, IPL6) gpio_cn_c() {
     for (int i = 0; i < 16; i++) {
         uint32_t bit = 1 << i;
         if ((changes & bit) != 0) {
-            if (((currentState & bit) == 1) && (interruptPinCallback[0x20 + i].risingEdge != NULL)) {
+            if (((currentState & bit) != 0) && (interruptPinCallback[0x20 + i].risingEdge != NULL)) {
                 interruptPinCallback[0x20 + i].risingEdge(0x20 + i, 1);
             } else if (((currentState & bit) == 0) && (interruptPinCallback[0x20 + i].fallingEdge != NULL)) {
                 interruptPinCallback[0x20 + i].fallingEdge(0x20 + i, 0);
@@ -487,7 +487,7 @@ void __ISR(_CHANGE_NOTICE_D_VECTOR, IPL6) gpio_cn_d() {
     for (int i = 0; i < 16; i++) {
         uint32_t bit = 1 << i;
         if ((changes & bit) != 0) {
-            if (((currentState & bit) == 1) && (interruptPinCallback[0x30 + i].risingEdge != NULL)) {
+            if (((currentState & bit) != 0) && (interruptPinCallback[0x30 + i].risingEdge != NULL)) {
                 interruptPinCallback[0x30 + i].risingEdge(0x30 + i, 1);
             } else if (((currentState & bit) == 0) && (interruptPinCallback[0x30 + i].fallingEdge != NULL)) {
                 interruptPinCallback[0x30 + i].fallingEdge(0x30 + i, 0);
@@ -511,7 +511,7 @@ void __ISR(_CHANGE_NOTICE_E_VECTOR, IPL6) gpio_cn_e() {
     for (int i = 0; i < 16; i++) {
         uint32_t bit = 1 << i;
         if ((changes & bit) != 0) {
-            if (((currentState & bit) == 1) && (interruptPinCallback[0x40 + i].risingEdge != NULL)) {
+            if (((currentState & bit) != 0) && (interruptPinCallback[0x40 + i].risingEdge != NULL)) {
                 interruptPinCallback[0x40 + i].risingEdge(0x40 + i, 1);
             } else if (((currentState & bit) == 0) && (interruptPinCallback[0x40 + i].fallingEdge != NULL)) {
                 interruptPinCallback[0x40 + i].fallingEdge(0x40 + i, 0);
@@ -535,7 +535,7 @@ void __ISR(_CHANGE_NOTICE_F_VECTOR, IPL6) gpio_cn_f() {
     for (int i = 0; i < 16; i++) {
         uint32_t bit = 1 << i;
         if ((changes & bit) != 0) {
-            if (((currentState & bit) == 1) && (interruptPinCallback[0x50 + i].risingEdge != NULL)) {
+            if (((currentState & bit) != 0) && (interruptPinCallback[0x50 + i].risingEdge != NULL)) {
                 interruptPinCallback[0x50 + i].risingEdge(0x50 + i, 1);
             } else if (((currentState & bit) == 0) && (interruptPinCallback[0x50 + i].fallingEdge != NULL)) {
                 interruptPinCallback[0x50 + i].fallingEdge(0x50 + i, 0);
@@ -559,7 +559,7 @@ void __ISR(_CHANGE_NOTICE_G_VECTOR, IPL6) gpio_cn_g() {
     for (int i = 0; i < 16; i++) {
         uint32_t bit = 1 << i;
         if ((changes & bit) != 0) {
-            if (((currentState & bit) == 1) && (interruptPinCallback[0x60 + i].risingEdge != NULL)) {
+            if (((currentState & bit) != 0) && (interruptPinCallback[0x60 + i].risingEdge != NULL)) {
                 interruptPinCallback[0x60 + i].risingEdge(0x60 + i, 1);
             } else if (((currentState & bit) == 0) && (interruptPinCallback[0x60 + i].fallingEdge != NULL)) {
                 interruptPinCallback[0x60 + i].fallingEdge(0x60 + i, 0);
@@ -583,7 +583,7 @@ void __ISR(_CHANGE_NOTICE_H_VECTOR, IPL6) gpio_cn_h() {
     for (int i = 0; i < 16; i++) {
         uint32_t bit = 1 << i;
         if ((changes & bit) != 0) {
-            if (((currentState & bit) == 1) && (interruptPinCallback[0x70 + i].risingEdge != NULL)) {
+            if (((currentState & bit) != 0) && (interruptPinCallback[0x70 + i].risingEdge != NULL)) {
                 interruptPinCallback[0x70 + i].risingEdge(0x70 + i, 1);
             } else if (((currentState & bit) == 0) && (interruptPinCallback[0x70 + i].fallingEdge != NULL)) {
                 interruptPinCallback[0x70 + i].fallingEdge(0x70 + i, 0);
@@ -607,7 +607,7 @@ void __ISR(_CHANGE_NOTICE_J_VECTOR, IPL6) gpio_cn_j() {
     for (int i = 0; i < 16; i++) {
         uint32_t bit = 1 << i;
         if ((changes & bit) != 0) {
-            if (((currentState & bit) == 1) && (interruptPinCallback[0x80 + i].risingEdge != NULL)) {
+            if (((currentState & bit) != 0) && (interruptPinCallback[0x80 + i].risingEdge != NULL)) {
                 interruptPinCallback[0x80 + i].risingEdge(0x80 + i, 1);
             } else if (((currentState & bit) == 0) && (interruptPinCallback[0x80 + i].fallingEdge != NULL)) {
                 interruptPinCallback[0x80 + i].fallingEdge(0x80 + i, 0);
@@ -631,7 +631,7 @@ void __ISR(_CHANGE_NOTICE_K_VECTOR, IPL6) gpio_cn_k() {
     for (int i = 0; i < 16; i++) {
         uint32_t bit = 1 << i;
         if ((changes & bit) != 0) {
-            if (((currentState & bit) == 1) && (interruptPinCallback[0x90 + i].risingEdge != NULL)) {
+            if (((currentState & bit) != 0) && (interruptPinCallback[0x90 + i].risingEdge != NULL)) {
                 interruptPinCallback[0x90 + i].risingEdge(0x90 + i, 1);
             } else if (((currentState & bit) == 0) && (interruptPinCallback[0x90 + i].fallingEdge != NULL)) {
                 interruptPinCallback[0x90 + i].fallingEdge(0x90 + i, 0);
