@@ -69,6 +69,6 @@ void attachInterrupt(uint8_t pin, void (*callback)(), int mode) {
 }
 
 void detachInterrupt(uint8_t pin) {
-    gpio_disconnect_interrupt(gpio, gpio_INTERRUPT_FALLING);
-    gpio_disconnect_interrupt(gpio, gpio_INTERRUPT_RISING);
+    gpio_disconnect_interrupt(gpio, gpioINTERRUPT_FALLING);
+    gpio_disconnect_interrupt(gpio, gpioINTERRUPT_RISING);
 }
