@@ -42,6 +42,8 @@
  * See http://www.freertos.org/a00110.html
  *----------------------------------------------------------*/
 
+#define configTICK_INTERRUPT_VECTOR             _CORE_TIMER_VECTOR
+#define configCLEAR_TICK_TIMER_INTERRUPT()      cpu_clear_interrupt_flag(configTICK_INTERRUPT_VECTOR)
 #define configUSE_PREEMPTION					1
 #define configUSE_PORT_OPTIMISED_TASK_SELECTION	1
 #define configUSE_QUEUE_SETS					1

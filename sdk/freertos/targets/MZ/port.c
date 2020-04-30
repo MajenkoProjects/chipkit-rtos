@@ -143,6 +143,8 @@ task stack, not the ISR stack). */
  */
 static void prvTaskExitError( void );
 
+static uint32_t tickCounter = 0;
+
 /*-----------------------------------------------------------*/
 
 /* Records the interrupt nesting depth.  This is initialised to one as it is
@@ -233,18 +235,21 @@ static void prvTaskExitError( void )
  */
 __attribute__(( weak )) void vApplicationSetupTickTimerInterrupt( void )
 {
-const uint32_t ulCompareMatch = ( (cpu_get_peripheral_clock() / portTIMER_PRESCALE) / configTICK_RATE_HZ ) - 1UL;
+//const uint32_t ulCompareMatch = ( (cpu_get_peripheral_clock() / portTIMER_PRESCALE) / configTICK_RATE_HZ ) - 1UL;
 
-	T1CON = 0x0000;
-	T1CONbits.TCKPS = portPRESCALE_BITS;
-	PR1 = ulCompareMatch;
+    tickCounter = cpu_get_system_clock() / 2 / configTICK_RATE_HZ;
+    cpu_ct_init(tickCounter);
+
+//	T1CON = 0x0000;
+//	T1CONbits.TCKPS = portPRESCALE_BITS;
+//	PR1 = ulCompareMatch;
     
     cpu_set_interrupt_priority(configTICK_INTERRUPT_VECTOR, configKERNEL_INTERRUPT_PRIORITY, 0);
     cpu_clear_interrupt_flag(configTICK_INTERRUPT_VECTOR);
     cpu_set_interrupt_enable(configTICK_INTERRUPT_VECTOR);
 
 	/* Start the timer. */
-	T1CONbits.TON = 1;
+//	T1CONbits.TON = 1;
 }
 /*-----------------------------------------------------------*/
 
@@ -295,6 +300,9 @@ extern void *pxCurrentTCB;
 void vPortIncrementTick( void )
 {
 UBaseType_t uxSavedStatus;
+
+    tickCounter += cpu_get_system_clock() / 2 / configTICK_RATE_HZ;
+    cpu_ct_write_compare(tickCounter);
 
 	uxSavedStatus = uxPortSetInterruptMaskFromISR();
 	{

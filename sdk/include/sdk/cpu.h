@@ -15,6 +15,11 @@ typedef struct {
     volatile uint32_t   rsv3;
 } p32_regbuf;
 
+// These are done as macros instead of functions to make them super-fast
+#define cpu_ct_read_count(dest) __asm__ __volatile__("mfc0 %0,$9" : "=r" (dest))
+#define cpu_ct_read_compare(dest) __asm__ __volatile__("mfc0 %0,$11" : "=r" (dest))
+#define cpu_ct_write_compare(src) __asm__ __volatile__("mtc0 %0,$11" : : "r" (src))
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -31,6 +36,7 @@ extern void cpu_set_interrupt_priority(uint8_t, uint8_t, uint8_t);
 extern void cpu_unlock();
 extern void cpu_lock();
 extern void cpu_reset();
+extern void cpu_ct_init(uint32_t initcompare);
 
 #ifdef __cplusplus
 }

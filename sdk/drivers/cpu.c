@@ -88,3 +88,12 @@ void cpu_reset() {
     RSWRSTSET=_RSWRST_SWRST_MASK;
 }
 
+/**
+ * Initialize the Core Timer to zero and set an initial compare
+ * @param: initcompare Initial value to use in the Compare register
+ */
+
+void cpu_ct_init(uint32_t initcompare) {
+    asm volatile("mtc0 $0, $9");
+    asm volatile("mtc0 %0, $11" : "+r"(initcompare));
+}
