@@ -16,8 +16,10 @@ extern uint8_t gpio_read(uint8_t);
 extern int gpio_set_input_function(uint8_t pin, uint8_t function);
 extern int gpio_set_output_function(uint8_t pin, uint8_t function);
 extern int gpio_clear_output_function(uint8_t pin);
-extern int gpio_connect_interrupt(uint8_t pin, uint8_t type, gpioISR_t callback);
-extern int gpio_disconnect_interrupt(uint8_t pin, uint8_t type);
+extern int gpio_connect_change_interrupt(uint8_t pin, uint8_t type, gpioISR_t callback);
+extern int gpio_disconnect_change_interrupt(uint8_t pin, uint8_t type);
+extern int gpio_connect_external_interrupt(uint8_t pin, uint8_t interrupt, uint8_t mode, void (*callback)());
+extern int gpio_disconnect_external_interrupt(uint8_t interrupt);
 
 #ifdef __cplusplus
 }
