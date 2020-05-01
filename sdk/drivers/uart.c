@@ -1,3 +1,7 @@
+/**
+ * @file uart.c
+ * Controls the USART peripherals of the PIC32
+ */
 #include <stdio.h>
 #include <sys/attribs.h>
 
@@ -54,10 +58,18 @@ static struct uartControlDataStruct uartControlData[__CHIP_HAS_UART] = {
 #endif
 };
 
+/**
+ * Purge all received data from the receive queue of a UART
+ * @param uart The UART number (0-5) to purge
+ */
 void uart_purge(uint8_t uart) {
     xQueueReset(uartControlData[uart].rxBuffer);
 }
 
+/**
+ * Block until all data is sent out of a UART transmission queue
+ * @param uart The UART number (0-5) to flush
+ */
 #if (configUART_TX_BUFFERED == 1)
 void uart_flush(uint8_t uart) {
     if (uartControlData[uart].txBuffer == NULL) return 0;
@@ -76,12 +88,22 @@ void uart_flush(uint8_t uart) {
 }
 #endif
 
+/**
+ * Return the number of bytes available to read in the UART receive buffer
+ * @param uart The UART (0-5) to query
+ * @returns The number of bytes waiting to be read
+ */
 int uart_rx_available(uint8_t uart) {
     if (uartControlData[uart].rxBuffer == NULL) return 0;
     int r = uxQueueMessagesWaiting(uartControlData[uart].rxBuffer);
     return r;
 }
 
+/**
+ * Return the number of spaces left in the transmission buffer of a UART
+ * @param uart The UART (0-5) to query
+ * @returns The number of bytes space in the transmit queue
+ */
 #if (configUART_TX_BUFFERED == 1)
 int uart_tx_available(uint8_t uart) {
     if (uartControlData[uart].txBuffer == NULL) return 0;
@@ -96,6 +118,13 @@ int uart_tx_available(uint8_t uart) {
 }
 #endif
 
+/**
+ * Write a block of bytes out through the UART
+ * @param uart The UART (0-5) to write to
+ * @param bytes Pointer to the data to write
+ * @param len Length of the data to write
+ * @returns The number of bytes able to be written
+ */
 int uart_write_bytes(uint8_t uart, const uint8_t *bytes, size_t len) {
     int count = 0;
     for (int i = 0; i < len; i++) {
@@ -106,6 +135,12 @@ int uart_write_bytes(uint8_t uart, const uint8_t *bytes, size_t len) {
     return count;
 }
 
+/**
+ * Write a single byte through the UART
+ * @param uart The UART (0-5) to write to
+ * @param byte The data to write
+ * @returns 1 if the data could be written, 0 otherwise
+ */
 #if (configUART_TX_BUFFERED == 1)
 int uart_write(uint8_t uart, uart_queue_t byte) {
     if (uartControlData[uart].txBuffer == NULL) return 0;
@@ -133,6 +168,11 @@ int uart_write(uint8_t uart, uart_queue_t byte) {
 #endif
 
 
+/**
+ * Read a single byte from the UART receive queue
+ * @param uart The number of the UART (0-5) to read from
+ * @returns The next byte in the queue, or -1 if the queue is empty
+ */
 int uart_read(uint8_t uart) {
     if (uxQueueMessagesWaiting(uartControlData[uart].rxBuffer) == 0) {
         return -1;
@@ -142,6 +182,11 @@ int uart_read(uint8_t uart) {
     return b;
 }
 
+/**
+ * Read the next byte from the UART receive queue without removing it from the queue
+ * param uart The number of the UART (0-5) to read from
+ * @returns The next byte in the queue, or -1 if the queue is empty
+ */
 int uart_peek(uint8_t uart) {
     if (uxQueueMessagesWaiting(uartControlData[uart].rxBuffer) == 0) {
         return -1;
@@ -242,6 +287,12 @@ int uart_set_format(uint8_t uart, uint8_t format) {
     return 1;
 }
 
+/**
+ * Open a UART. This configures the UART and starts the transmit and receive queues and
+ * interrupts.
+ * @param uart The UART index (0-5) to open
+ * @returns 1 if the UART could be opened, 0 otherwise 
+ */
 int uart_open(uint8_t uart) {
     if (uart >= __CHIP_HAS_UART) return 0;
 
@@ -266,6 +317,11 @@ int uart_open(uint8_t uart) {
     return 1;
 }
 
+/**
+ * Close a UART and free any resources used
+ * @param uart The UART index (0-5) to close
+ * @returns 1 if the UART could be closed, 0 otherwise
+ */
 int uart_close(uint8_t uart) {
     if (uart >= __CHIP_HAS_UART) return 0;
     uartControlData[uart].reg->sta.clr = (1 << 12) | (1 << 10);

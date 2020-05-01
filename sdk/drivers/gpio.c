@@ -1,26 +1,28 @@
-#include <Arduino.h>
-
+/**
+ * @file gpio.c
+ * Routines for controlling GPIO pins in digital modes. This also includes
+ * external and change notification interrupts.
+ */
+#include <p32xxxx.h>
 #include <sys/attribs.h>
 
 #include "sdk/gpio.h"
 #include "sdk/chipspec.h"
 
-struct cnInterruptCallback {
+static struct cnInterruptCallback {
     gpioISR_t fallingEdge;
     gpioISR_t risingEdge;
 };
 
-struct cnInterruptCallback cnInterruptPinCallback[__CHIP_MAX_GPIO + 1] = {0};
-void (*externalInterrupt[5])() = {0};
+static struct cnInterruptCallback cnInterruptPinCallback[__CHIP_MAX_GPIO + 1] = {0};
+static void (*externalInterrupt[5])() = {0};
 
 static struct ppsPinMapping {
     uint8_t groups;
     uint8_t setting;
 };
 
-//    |in|out|
-//    DCBADCBA
-const struct ppsPinMapping ppsPinMappingPins[] = {
+static const struct ppsPinMapping ppsPinMappingPins[] = {
     { 0b00000000, 0 }, // A0
     { 0b00000000, 0 }, // A1
     { 0b00000000, 0 }, // A2
@@ -144,7 +146,7 @@ const struct ppsPinMapping ppsPinMappingPins[] = {
 #define NUM_PPS_PINS (sizeof(ppsPinMappingPins) / sizeof(ppsPinMappingPins[0]))
 
 // * - not remappable, but space in the table for them
-const struct ppsPinMapping ppsPinMappingFunctions[] = {
+static const struct ppsPinMapping ppsPinMappingFunctions[] = {
     // 0 - 9
     { 0b00000000, 0 }, // INT0R *   1400
     { 0b10000000, 0 }, // INT1R     1404
@@ -258,6 +260,20 @@ const struct ppsPinMapping ppsPinMappingFunctions[] = {
 };
 #define NUM_PPS_FUNCTIONS (sizeof(ppsPinMappingFunctions) / sizeof(ppsPinMappingFunctions[0]))
 
+/**
+ * Set the IO mode for a GPIO pin
+ *
+ * Configures a pin to be either input or output, and controls extra facilities
+ * such as open-drain and pullup/down resistors.
+ * 
+ * A pin mode is specified as a bitmap of a combination of macros to build the
+ * completed mode. One of gpioMODE_OUTPUT or gpioMODE_INPUT must be specified.
+ * for gpioMODE_OUTPUT you may also combine it with gpioMODE_OPENDRAIN. For 
+ * gpioMODE_INPUT you may also combine it with gpioMODE_PULLUP and gpioMODE_PULLDOWN.
+ *
+ * @param pin The GPIO pin index
+ * @param mode The IO mode to set
+ */
 void gpio_set_mode(uint8_t pin, uint8_t mode) {
     if (pin > __CHIP_MAX_GPIO) return;
 #if __CHIP_HAS_PPS
@@ -297,6 +313,11 @@ void gpio_set_mode(uint8_t pin, uint8_t mode) {
 
 }
 
+/**
+ * Read the state of a GPIO pin
+ * @param pin The pin index to read
+ * @returns 1 if the input is HIGH or 0 if LOW
+ */
 uint8_t gpio_read(uint8_t pin) {
     if (pin > __CHIP_MAX_GPIO) return 0;
     uint16_t val = *gpioPIN_TO_REG(pin, PORT);
@@ -307,6 +328,11 @@ uint8_t gpio_read(uint8_t pin) {
     }
 }
 
+/**
+ * Set the output level of a GPIO pin
+ * @param pin The pin index to write
+ * @param val 1 to drive the pin HIGH or 0 to drive it LOW
+ */
 void gpio_write(uint8_t pin, uint8_t val) {
     if (pin > __CHIP_MAX_GPIO) return;
     if (val == 0) {
@@ -316,6 +342,12 @@ void gpio_write(uint8_t pin, uint8_t val) {
     }
 }
 
+/** 
+ * Configure the input Peripheral Pin Select function on a pin
+ * @param pin The pin to configure
+ * @param function The PPS function to assign in the form gpioPPS_<FUNC>
+ * @returns 1 if the function could be assigned, 0 otherwise
+ */
 int gpio_set_input_function(uint8_t pin, uint8_t function) {
     if (pin > __CHIP_MAX_GPIO) return 0;
     if (pin >= NUM_PPS_PINS) return 0;
@@ -326,6 +358,12 @@ int gpio_set_input_function(uint8_t pin, uint8_t function) {
     return 1;
 }
 
+/**
+ * Configure the output Peripheral Pin Select function on a pin
+ * @param pin The pin to configure
+ * @param function The PPS function to assign in the form gpioPPS_<FUNC>
+ * @returns 1 if the function could be assigned, 0 otherwise
+ */
 int gpio_set_output_function(uint8_t pin, uint8_t function) {
     if (pin > __CHIP_MAX_GPIO) return 0;
     if (pin >= NUM_PPS_PINS) return 0;
@@ -336,6 +374,12 @@ int gpio_set_output_function(uint8_t pin, uint8_t function) {
     return 1;
 }
 
+/**
+ * Remove the output Peripheral Pin Select function from a pin returning it to
+ * normal GPIO usage
+ * @param pin The pin to configur
+ * @returns 1 if the function could be removed, 0 otherwise
+ */
 int gpio_clear_output_function(uint8_t pin) {
     if (pin > __CHIP_MAX_GPIO) return 0;
     if (pin >= NUM_PPS_PINS) return 0;
@@ -347,6 +391,18 @@ int gpio_clear_output_function(uint8_t pin) {
     return 0;
 }
 
+/**
+ * Connect the Change Notfication interrupt of a GPIO pin to a callback routine. Different
+ * callback routines can be connected to both the rising edge and falling edge interrupts.
+ * @param pin The pin to attach the callback to
+ * @param type The edge to connect to. One of:
+ * * gpioINTERRUPT_RISING
+ * * gpioINTERRUPT_FALLING
+ * @param callback The function to execute when the interrupt triggers. Two parameters
+ *                 passed (both uint8_t). The first is the pin number the interrupt
+ *                 occurred on, the second is the pin state 0 or 1.
+ * @returns 1 if the interrupt could be configured and connected, 0 otherwise
+ */
 int gpio_connect_change_interrupt(uint8_t pin, uint8_t type, gpioISR_t callback) {
     if (pin > __CHIP_MAX_GPIO) return 0;
 
@@ -374,6 +430,14 @@ int gpio_connect_change_interrupt(uint8_t pin, uint8_t type, gpioISR_t callback)
     return 1;
 }
 
+/**
+ * Disconnect a Change Notification callback from a pin
+ * @param pin The pin index to disconnect the callback from
+ * @param type The edge to disconnect from. One of:
+ * * gpioINTERRUPT_RISING
+ * * gpioINTERRUPT_FALLING
+ * @returns 1 if the interrupt could be disconnected, 0 otherwise
+ */ 
 int gpio_disconnect_change_interrupt(uint8_t pin, uint8_t type) {
     if (pin > __CHIP_MAX_GPIO) return 0; 
 
@@ -403,6 +467,18 @@ int gpio_disconnect_change_interrupt(uint8_t pin, uint8_t type) {
     return 1;
 }
 
+/**
+ * Connect an interrupt routine to an external interrupt. Unlike Change Notification interrupts
+ * only one edge of an external interrupt can be triggered on. However they are more responsive
+ * that change notification.
+ * @param pin The pin to configure the interrupt on through PPS (if needed)
+ * @param interrupt The interrupt number (0-4) to connect to
+ * @param mode The edge to connect to. One of:
+ * * gpioINTERRUPT_RISING
+ * * gpioINTERRUPT_FALLING
+ * @param callback The callback to connect with the interrupt. void callback()
+ * @returns 1 if the interrupt could be configured and connected, 0 otherwise
+ */
 int gpio_connect_external_interrupt(uint8_t pin, uint8_t interrupt, uint8_t mode, void (*callback)()) {
     int ret = 0;
     switch (interrupt) {
@@ -436,6 +512,11 @@ int gpio_connect_external_interrupt(uint8_t pin, uint8_t interrupt, uint8_t mode
     cpu_set_interrupt_enable(_EXTERNAL_0_VECTOR + interrupt);
 }
 
+/**
+ * Disconnect an external interrupt callback from a pin
+ * @param pin The pin index to disconnect
+ * @returns 1 if the interrupt could be disconnected, 0 otherwise.
+ */
 int gpio_disconnect_external_interrupt(uint8_t interrupt) {
     if (interrupt > 4) return 0;
     cpu_clear_interrupt_enable(_EXTERNAL_0_VECTOR + interrupt);
