@@ -36,6 +36,8 @@ extern int uart_open(uint8_t uart);
 extern int uart_close(uint8_t uart);
 extern void uart_flush(uint8_t uart);
 extern void uart_purge(uint8_t uart);
+extern int uart_write_bytes_emergency(uint8_t uart, const uint8_t *bytes, size_t len);
+extern int uart_is_open(uint8_t uart);
 
 #ifdef __cplusplus
 }

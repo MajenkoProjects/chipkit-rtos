@@ -24,6 +24,8 @@ typedef struct {
 extern "C" {
 #endif
 
+extern void cpu_disable_interrupts();
+extern void cpu_enable_interrupts();
 extern uint32_t cpu_get_peripheral_clock();
 extern uint32_t cpu_get_system_clock();
 extern int cpu_get_interrupt_flag(uint8_t);

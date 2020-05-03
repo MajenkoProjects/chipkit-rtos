@@ -168,6 +168,33 @@ int uart_write_bytes(uint8_t uart, const uint8_t *bytes, size_t len) {
 #endif
 
 /**
+ * Write an array of bytes to a UART in an emergency
+ * situation. This bypasses any buffering (if enabled)
+ * and the thread safety mutex. For use in exception
+ * handlers and the like where panic information needs
+ * to be reported before shutting down or rebooting
+ * @param uart The UART number
+ * @param bytes The array of bytes to print
+ * @param len The number of bytes to write
+ * @returns The number of bytes written
+ */
+int uart_write_bytes_emergency(uint8_t uart, const uint8_t *bytes, size_t len) {
+    int count = 0;
+    for (int i = 0; i < len; i++) {
+        while ((uartControlData[uart].reg->sta.reg & (1 << 9)) != 0) {
+            continue;
+        }
+
+        uartControlData[uart].reg->txreg.reg = bytes[i];
+        count++;
+    }
+    while ((uartControlData[uart].reg->sta.reg & (1 << 8)) != 0) {
+        continue;
+    }
+    return count;
+}
+
+/**
  * Write a single byte through the UART
  * @param uart The UART (0-5) to write to
  * @param byte The data to write
@@ -355,6 +382,18 @@ int uart_open(uint8_t uart) {
     uartControlData[uart].reg->sta.set = (1 << 12) | (1 << 10);
     uartControlData[uart].reg->mode.set = (1 << 15);
 
+    return 1;
+}
+
+/**
+ * Test if a UART has been opened
+ * @param uart The UART to test
+ * @returns 1 if the UART is open, 0 otherwise
+ */
+int uart_is_open(uint8_t uart) {
+    if (uartControlData[uart].rxBuffer == NULL) return 0;
+    if (cpu_get_interrupt_enable(uartControlData[uart].rxVector) == 0) return 0;
+    if ((uartControlData[uart].reg->mode.reg & (1 << 15)) == 0) return 0;
     return 1;
 }
 

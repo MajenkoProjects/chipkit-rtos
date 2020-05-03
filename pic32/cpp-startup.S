@@ -544,7 +544,7 @@ _ramfunc_done:
         .set noreorder
         .ent _bev_exception
 _bev_exception:
-        la      k0,_bootstrap_exception_handler
+        la      k0,cpu_bootstrap_exception
         jr      k0
         nop
 
@@ -564,7 +564,7 @@ _bev_exception:
         .set noreorder
         .ent _gen_exception
 _gen_exception:
-        la      k0,_gen_exception
+        la      k0,cpu_general_exception
         jr      k0
         nop
 
@@ -598,7 +598,7 @@ simple_tlb_refill_vector:
         .set noreorder
         .ent _cache_err_vector
 _cache_err_vector:
-        la      k0,_cache_err_exception_context
+        la      k0,cpu_cache_error_exception
         jr      k0
         nop
 

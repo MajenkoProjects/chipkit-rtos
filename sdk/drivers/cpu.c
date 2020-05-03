@@ -7,6 +7,22 @@
 #include <stdint.h>
 
 #include "sdk/cpu.h"
+#include "FreeRTOS.h"
+#include "task.h"
+
+/**
+ * Globally disable all interrupts
+ */
+void cpu_disable_interrupts() {
+    taskDISABLE_INTERRUPTS();
+}
+
+/**
+ * Globally enable interrupts
+ */
+void cpu_enable_interrupts() {
+    taskENABLE_INTERRUPTS();
+}
 
 /**
  * Calculates and returns the current peripheral bus clock frequency
@@ -152,3 +168,67 @@ void cpu_ct_init(uint32_t initcompare) {
     asm volatile("mtc0 $0, $9");
     asm volatile("mtc0 %0, $11" : "+r"(initcompare));
 }
+
+void __attribute__((nomips16)) cpu_general_exception() {
+    cpu_disable_interrupts();
+    if (!uart_is_open(0)) {
+        while(1);
+    }
+
+    unsigned int _epc_code;
+    unsigned int _excep_addr;
+
+    asm volatile("mfc0 %0,$13" : "=r" (_epc_code));
+    asm volatile("mfc0 %0,$14" : "=r" (_excep_addr));
+
+    char errormsg[40];
+    sprintf(errormsg, "Genral exception at %08x\r\n", _excep_addr);
+    uart_write_bytes_emergency(0, errormsg, strlen(errormsg));
+    sprintf(errormsg, "Guru Meditation %08x\r\n", _epc_code);
+    uart_write_bytes_emergency(0, errormsg, strlen(errormsg));
+    while(1);
+}
+
+void __attribute__((nomips16)) cpu_bootstrap_exception() {
+    cpu_disable_interrupts();
+    if (!uart_is_open(0)) {
+        while(1);
+    }
+
+    unsigned int _epc_code;
+    unsigned int _excep_addr;
+
+    asm volatile("mfc0 %0,$13" : "=r" (_epc_code));
+    asm volatile("mfc0 %0,$14" : "=r" (_excep_addr));
+
+    char errormsg[40];
+    sprintf(errormsg, "Bootstrap exception at %08x\r\n", _excep_addr);
+    uart_write_bytes_emergency(0, errormsg, strlen(errormsg));
+    sprintf(errormsg, "Guru Meditation %08x\r\n", _epc_code);
+    uart_write_bytes_emergency(0, errormsg, strlen(errormsg));
+    while(1);
+}
+
+void __attribute__((nomips16)) cpu_cache_error_exception() {
+    cpu_disable_interrupts();
+    if (!uart_is_open(0)) {
+        while(1);
+    }
+
+    unsigned int _epc_code;
+    unsigned int _excep_addr;
+
+    asm volatile("mfc0 %0,$13" : "=r" (_epc_code));
+    asm volatile("mfc0 %0,$14" : "=r" (_excep_addr));
+
+    char errormsg[40];
+    sprintf(errormsg, "Cache error at %08x\r\n", _excep_addr);
+    uart_write_bytes_emergency(0, errormsg, strlen(errormsg));
+    sprintf(errormsg, "Guru Meditation %08x\r\n", _epc_code);
+    uart_write_bytes_emergency(0, errormsg, strlen(errormsg));
+    while(1);
+}
+
+
+
+
