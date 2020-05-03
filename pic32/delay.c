@@ -18,3 +18,10 @@ uint32_t micros() {
     cpu_ct_read_count(ctc);
     return ctc / (cpu_get_system_clock() / 2 / 1000000);
 }
+
+void delayMicroseconds(uint32_t del) {
+    cpu_disable_interrupts();
+    uint32_t ts = micros();
+    while (micros() - ts < del);
+    cpu_enable_interrupts();
+}

@@ -8,6 +8,7 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include "queue.h"
+#include "semphr.h"
 
 #include "sdk/gpio.h"
 #include "sdk/uart.h"
@@ -35,26 +36,27 @@ static struct uartControlDataStruct {
     uint8_t rxVector;
     uint8_t faultVector;
     p32_uart *reg;
+    SemaphoreHandle_t writeSemaphore;
 };
 
 static struct uartControlDataStruct uartControlData[__CHIP_HAS_UART] = {
 #if (__CHIP_HAS_UART > 0)
-    { QUEUES, "UART0", _UART1_TX_VECTOR, _UART1_RX_VECTOR, _UART1_FAULT_VECTOR, &U1MODE },
+    { QUEUES, "UART0", _UART1_TX_VECTOR, _UART1_RX_VECTOR, _UART1_FAULT_VECTOR, &U1MODE, NULL },
 #endif
 #if (__CHIP_HAS_UART > 1)
-    { QUEUES, "UART1", _UART2_TX_VECTOR, _UART2_RX_VECTOR, _UART2_FAULT_VECTOR, &U2MODE },
+    { QUEUES, "UART1", _UART2_TX_VECTOR, _UART2_RX_VECTOR, _UART2_FAULT_VECTOR, &U2MODE, NULL },
 #endif
 #if (__CHIP_HAS_UART > 2)
-    { QUEUES, "UART2", _UART3_TX_VECTOR, _UART3_RX_VECTOR, _UART3_FAULT_VECTOR, &U3MODE },
+    { QUEUES, "UART2", _UART3_TX_VECTOR, _UART3_RX_VECTOR, _UART3_FAULT_VECTOR, &U3MODE, NULL },
 #endif
 #if (__CHIP_HAS_UART > 3)
-    { QUEUES, "UART3", _UART4_TX_VECTOR, _UART4_RX_VECTOR, _UART4_FAULT_VECTOR, &U4MODE },
+    { QUEUES, "UART3", _UART4_TX_VECTOR, _UART4_RX_VECTOR, _UART4_FAULT_VECTOR, &U4MODE, NULL },
 #endif
 #if (__CHIP_HAS_UART > 4)
-    { QUEUES, "UART4", _UART5_TX_VECTOR, _UART5_RX_VECTOR, _UART5_FAULT_VECTOR, &U5MODE },
+    { QUEUES, "UART4", _UART5_TX_VECTOR, _UART5_RX_VECTOR, _UART5_FAULT_VECTOR, &U5MODE, NULL },
 #endif
 #if (__CHIP_HAS_UART > 5)
-    { QUEUES, "UART5", _UART6_TX_VECTOR, _UART6_RX_VECTOR, _UART6_FAULT_VECTOR, &U6MODE },
+    { QUEUES, "UART5", _UART6_TX_VECTOR, _UART6_RX_VECTOR, _UART6_FAULT_VECTOR, &U6MODE, NULL },
 #endif
 };
 
@@ -125,15 +127,45 @@ int uart_tx_available(uint8_t uart) {
  * @param len Length of the data to write
  * @returns The number of bytes able to be written
  */
+#if (configUART_TX_BUFFERED == 1)
 int uart_write_bytes(uint8_t uart, const uint8_t *bytes, size_t len) {
+    if (uartControlData[uart].txBuffer == NULL) return 0;
     int count = 0;
     for (int i = 0; i < len; i++) {
-        int r = uart_write(uart, bytes[i]);
-        if (r == 0) break;
+        if (xQueueSendToBack(uartControlData[uart].txBuffer, bytes[i], portMAX_DELAY) == pdPASS) {
+            if (!cpu_get_interrupt_enable(uartControlData[uart].txVector)) {
+                cpu_set_interrupt_flag(uartControlData[uart].txVector);
+                cpu_set_interrupt_enable(uartControlData[uart].txVector);
+            }
+            // For some reason this is needed to allow the queue to
+            // synchronise with the ISR properly. Any clues?
+            vTaskDelay(1);
+        } else {
+            break;
+        }
         count++;
     }
+    xSemaphoreGive(uartControlData[uart].writeSemaphore);
     return count;
 }
+#else
+int uart_write_bytes(uint8_t uart, const uint8_t *bytes, size_t len) {
+    if (xSemaphoreTake(uartControlData[uart].writeSemaphore, portMAX_DELAY) != pdPASS) {
+        return 0;
+    }
+    int count = 0;
+    for (int i = 0; i < len; i++) {
+        while ((uartControlData[uart].reg->sta.reg & (1 << 9)) != 0) {
+            vTaskDelay(1);
+        }
+
+        uartControlData[uart].reg->txreg.reg = bytes[i];
+        count++;
+    }
+    xSemaphoreGive(uartControlData[uart].writeSemaphore);
+    return count;
+}
+#endif
 
 /**
  * Write a single byte through the UART
@@ -144,6 +176,9 @@ int uart_write_bytes(uint8_t uart, const uint8_t *bytes, size_t len) {
 #if (configUART_TX_BUFFERED == 1)
 int uart_write(uint8_t uart, uart_queue_t byte) {
     if (uartControlData[uart].txBuffer == NULL) return 0;
+    if (xSemaphoreTake(uartControlData[uart].writeSemaphore, portMAX_DELAY) != pdPASS) {
+        return 0;
+    }
     if (xQueueSendToBack(uartControlData[uart].txBuffer, &byte, portMAX_DELAY) == pdPASS) {
         if (!cpu_get_interrupt_enable(uartControlData[uart].txVector)) {
             cpu_set_interrupt_flag(uartControlData[uart].txVector);
@@ -152,17 +187,22 @@ int uart_write(uint8_t uart, uart_queue_t byte) {
             // synchronise with the ISR properly. Any clues?
             vTaskDelay(1);
         }
+        xSemaphoreGive(uartControlData[uart].writeSemaphore);
         return 1;
     }
     return 0;
 }
 #else
 int uart_write(uint8_t uart, uart_queue_t byte) {
+    if (xSemaphoreTake(uartControlData[uart].writeSemaphore, portMAX_DELAY) != pdPASS) {
+        return 0;
+    }
     while ((uartControlData[uart].reg->sta.reg & (1 << 9)) != 0) {
         vTaskDelay(1);
     }
 
     uartControlData[uart].reg->txreg.reg = byte;
+    xSemaphoreGive(uartControlData[uart].writeSemaphore);
     return 1;
 }
 #endif
@@ -303,6 +343,7 @@ int uart_open(uint8_t uart) {
 #endif
 
     uartControlData[uart].rxBuffer = xQueueCreate(64, sizeof(uart_queue_t));
+    uartControlData[uart].writeSemaphore = xSemaphoreCreateMutex();
 
     cpu_set_interrupt_priority(uartControlData[uart].rxVector, 2, 0);
     cpu_clear_interrupt_flag(uartControlData[uart].rxVector);
@@ -335,6 +376,7 @@ int uart_close(uint8_t uart) {
     cpu_clear_interrupt_enable(uartControlData[uart].rxVector);
     cpu_set_interrupt_priority(uartControlData[uart].rxVector, 0, 0);
     vQueueDelete(uartControlData[uart].rxBuffer);
+    vSemaphoreDelete(uartControlData[uart].writeSemaphore);
 
     cpu_clear_interrupt_enable(uartControlData[uart].faultVector);
     cpu_set_interrupt_priority(uartControlData[uart].faultVector, 0, 0);
