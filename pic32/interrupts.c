@@ -1,17 +1,18 @@
 #include <Arduino.h>
-#include "FreeRTOS.h"
-#include "task.h"
+#include "sdk/cpu.h"
 
 // Yes, I know this isn't strictly a "restore", but it's only ever used to turn back on.
 void  restoreInterrupts(uint32_t st) {
-    taskENABLE_INTERRUPTS();
+    cpu_enable_interrupts();
 }
 
 uint32_t disableInterrupts(void) {
-    taskDISABLE_INTERRUPTS();
+    cpu_disable_interrupts();
+    return 1;
 }
 
 uint32_t enableInterrupts(void) {
-    taskENABLE_INTERRUPTS();
+    cpu_enable_interrupts();
+    return 0;
 }
 

@@ -8,16 +8,17 @@
 
 #include "sdk/gpio.h"
 #include "sdk/chipspec.h"
+#include "sdk/cpu.h"
 
-static struct cnInterruptCallback {
+struct cnInterruptCallback {
     gpioISR_t fallingEdge;
     gpioISR_t risingEdge;
 };
 
-static struct cnInterruptCallback cnInterruptPinCallback[__CHIP_MAX_GPIO + 1] = {0};
+static struct cnInterruptCallback cnInterruptPinCallback[__CHIP_MAX_GPIO + 1] = {{0}};
 static void (*externalInterrupt[5])() = {0};
 
-static struct ppsPinMapping {
+struct ppsPinMapping {
     uint8_t groups;
     uint8_t setting;
 };
@@ -510,6 +511,7 @@ int gpio_connect_external_interrupt(uint8_t pin, uint8_t interrupt, uint8_t mode
     cpu_set_interrupt_priority(_EXTERNAL_0_VECTOR + interrupt, 6, 0);
     cpu_clear_interrupt_flag(_EXTERNAL_0_VECTOR + interrupt);
     cpu_set_interrupt_enable(_EXTERNAL_0_VECTOR + interrupt);
+    return 1;
 }
 
 /**
@@ -526,33 +528,33 @@ int gpio_disconnect_external_interrupt(uint8_t interrupt) {
 }
 
 
-void __ISR(_EXTERNAL_0_VECTOR, IPL6) gpio_ext_0() {
+void __ISR(_EXTERNAL_0_VECTOR, IPL6AUTO) gpio_ext_0() {
     cpu_clear_interrupt_flag(_EXTERNAL_0_VECTOR);
     if (externalInterrupt[0] != NULL) externalInterrupt[0]();
 }
 
-void __ISR(_EXTERNAL_1_VECTOR, IPL6) gpio_ext_1() {
+void __ISR(_EXTERNAL_1_VECTOR, IPL6AUTO) gpio_ext_1() {
     cpu_clear_interrupt_flag(_EXTERNAL_1_VECTOR);
     if (externalInterrupt[1] != NULL) externalInterrupt[1]();
 }
 
-void __ISR(_EXTERNAL_2_VECTOR, IPL6) gpio_ext_2() {
+void __ISR(_EXTERNAL_2_VECTOR, IPL6AUTO) gpio_ext_2() {
     cpu_clear_interrupt_flag(_EXTERNAL_2_VECTOR);
     if (externalInterrupt[2] != NULL) externalInterrupt[2]();
 }
 
-void __ISR(_EXTERNAL_3_VECTOR, IPL6) gpio_ext_3() {
+void __ISR(_EXTERNAL_3_VECTOR, IPL6AUTO) gpio_ext_3() {
     cpu_clear_interrupt_flag(_EXTERNAL_3_VECTOR);
     if (externalInterrupt[3] != NULL) externalInterrupt[3]();
 }
 
-void __ISR(_EXTERNAL_4_VECTOR, IPL6) gpio_ext_4() {
+void __ISR(_EXTERNAL_4_VECTOR, IPL6AUTO) gpio_ext_4() {
     cpu_clear_interrupt_flag(_EXTERNAL_4_VECTOR);
     if (externalInterrupt[4] != NULL) externalInterrupt[4]();
 }
 
 #if defined(_CHANGE_NOTICE_A_VECTOR)
-void __ISR(_CHANGE_NOTICE_A_VECTOR, IPL6) gpio_cn_a() {
+void __ISR(_CHANGE_NOTICE_A_VECTOR, IPL6AUTO) gpio_cn_a() {
     static uint32_t storedState = 0;
     cpu_clear_interrupt_flag(_CHANGE_NOTICE_A_VECTOR);
 
@@ -576,7 +578,7 @@ void __ISR(_CHANGE_NOTICE_A_VECTOR, IPL6) gpio_cn_a() {
 #endif
 
 #if defined(_CHANGE_NOTICE_B_VECTOR)
-void __ISR(_CHANGE_NOTICE_B_VECTOR, IPL6) gpio_cn_b() {
+void __ISR(_CHANGE_NOTICE_B_VECTOR, IPL6AUTO) gpio_cn_b() {
     static uint32_t storedState = 0;
     cpu_clear_interrupt_flag(_CHANGE_NOTICE_B_VECTOR);
 
@@ -600,7 +602,7 @@ void __ISR(_CHANGE_NOTICE_B_VECTOR, IPL6) gpio_cn_b() {
 #endif
 
 #if defined(_CHANGE_NOTICE_C_VECTOR)
-void __ISR(_CHANGE_NOTICE_C_VECTOR, IPL6) gpio_cn_c() {
+void __ISR(_CHANGE_NOTICE_C_VECTOR, IPL6AUTO) gpio_cn_c() {
     static uint32_t storedState = 0;
     cpu_clear_interrupt_flag(_CHANGE_NOTICE_C_VECTOR);
 
@@ -624,7 +626,7 @@ void __ISR(_CHANGE_NOTICE_C_VECTOR, IPL6) gpio_cn_c() {
 #endif
 
 #if defined(_CHANGE_NOTICE_D_VECTOR)
-void __ISR(_CHANGE_NOTICE_D_VECTOR, IPL6) gpio_cn_d() {
+void __ISR(_CHANGE_NOTICE_D_VECTOR, IPL6AUTO) gpio_cn_d() {
     static uint32_t storedState = 0;
     cpu_clear_interrupt_flag(_CHANGE_NOTICE_D_VECTOR);
 
@@ -648,7 +650,7 @@ void __ISR(_CHANGE_NOTICE_D_VECTOR, IPL6) gpio_cn_d() {
 #endif
 
 #if defined(_CHANGE_NOTICE_E_VECTOR)
-void __ISR(_CHANGE_NOTICE_E_VECTOR, IPL6) gpio_cn_e() {
+void __ISR(_CHANGE_NOTICE_E_VECTOR, IPL6AUTO) gpio_cn_e() {
     static uint32_t storedState = 0;
     cpu_clear_interrupt_flag(_CHANGE_NOTICE_E_VECTOR);
 
@@ -672,7 +674,7 @@ void __ISR(_CHANGE_NOTICE_E_VECTOR, IPL6) gpio_cn_e() {
 #endif
 
 #if defined(_CHANGE_NOTICE_F_VECTOR)
-void __ISR(_CHANGE_NOTICE_F_VECTOR, IPL6) gpio_cn_f() {
+void __ISR(_CHANGE_NOTICE_F_VECTOR, IPL6AUTO) gpio_cn_f() {
     static uint32_t storedState = 0;
     cpu_clear_interrupt_flag(_CHANGE_NOTICE_F_VECTOR);
 
@@ -696,7 +698,7 @@ void __ISR(_CHANGE_NOTICE_F_VECTOR, IPL6) gpio_cn_f() {
 #endif
 
 #if defined(_CHANGE_NOTICE_G_VECTOR)
-void __ISR(_CHANGE_NOTICE_G_VECTOR, IPL6) gpio_cn_g() {
+void __ISR(_CHANGE_NOTICE_G_VECTOR, IPL6AUTO) gpio_cn_g() {
     static uint32_t storedState = 0;
     cpu_clear_interrupt_flag(_CHANGE_NOTICE_G_VECTOR);
 
@@ -720,7 +722,7 @@ void __ISR(_CHANGE_NOTICE_G_VECTOR, IPL6) gpio_cn_g() {
 #endif
 
 #if defined(_CHANGE_NOTICE_H_VECTOR)
-void __ISR(_CHANGE_NOTICE_H_VECTOR, IPL6) gpio_cn_h() {
+void __ISR(_CHANGE_NOTICE_H_VECTOR, IPL6AUTO) gpio_cn_h() {
     static uint32_t storedState = 0;
     cpu_clear_interrupt_flag(_CHANGE_NOTICE_H_VECTOR);
 
@@ -744,7 +746,7 @@ void __ISR(_CHANGE_NOTICE_H_VECTOR, IPL6) gpio_cn_h() {
 #endif
 
 #if defined(_CHANGE_NOTICE_J_VECTOR)
-void __ISR(_CHANGE_NOTICE_J_VECTOR, IPL6) gpio_cn_j() {
+void __ISR(_CHANGE_NOTICE_J_VECTOR, IPL6AUTO) gpio_cn_j() {
     static uint32_t storedState = 0;
     cpu_clear_interrupt_flag(_CHANGE_NOTICE_J_VECTOR);
 
@@ -768,7 +770,7 @@ void __ISR(_CHANGE_NOTICE_J_VECTOR, IPL6) gpio_cn_j() {
 #endif
 
 #if defined(_CHANGE_NOTICE_K_VECTOR)
-void __ISR(_CHANGE_NOTICE_K_VECTOR, IPL6) gpio_cn_k() {
+void __ISR(_CHANGE_NOTICE_K_VECTOR, IPL6AUTO) gpio_cn_k() {
     static uint32_t storedState = 0;
     cpu_clear_interrupt_flag(_CHANGE_NOTICE_K_VECTOR);
 

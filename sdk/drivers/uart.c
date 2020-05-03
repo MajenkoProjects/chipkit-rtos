@@ -23,7 +23,7 @@ typedef struct {
     volatile p32_regset brg;
 } p32_uart;
 
-static struct uartControlDataStruct {
+struct uartControlDataStruct {
 #if (configUART_TX_BUFFERED == 1)
 #define QUEUES NULL, NULL
     QueueHandle_t txBuffer;
@@ -41,22 +41,22 @@ static struct uartControlDataStruct {
 
 static struct uartControlDataStruct uartControlData[__CHIP_HAS_UART] = {
 #if (__CHIP_HAS_UART > 0)
-    { QUEUES, "UART0", _UART1_TX_VECTOR, _UART1_RX_VECTOR, _UART1_FAULT_VECTOR, &U1MODE, NULL },
+    { QUEUES, "UART0", _UART1_TX_VECTOR, _UART1_RX_VECTOR, _UART1_FAULT_VECTOR, (p32_uart *)&U1MODE, NULL },
 #endif
 #if (__CHIP_HAS_UART > 1)
-    { QUEUES, "UART1", _UART2_TX_VECTOR, _UART2_RX_VECTOR, _UART2_FAULT_VECTOR, &U2MODE, NULL },
+    { QUEUES, "UART1", _UART2_TX_VECTOR, _UART2_RX_VECTOR, _UART2_FAULT_VECTOR, (p32_uart *)&U2MODE, NULL },
 #endif
 #if (__CHIP_HAS_UART > 2)
-    { QUEUES, "UART2", _UART3_TX_VECTOR, _UART3_RX_VECTOR, _UART3_FAULT_VECTOR, &U3MODE, NULL },
+    { QUEUES, "UART2", _UART3_TX_VECTOR, _UART3_RX_VECTOR, _UART3_FAULT_VECTOR, (p32_uart *)&U3MODE, NULL },
 #endif
 #if (__CHIP_HAS_UART > 3)
-    { QUEUES, "UART3", _UART4_TX_VECTOR, _UART4_RX_VECTOR, _UART4_FAULT_VECTOR, &U4MODE, NULL },
+    { QUEUES, "UART3", _UART4_TX_VECTOR, _UART4_RX_VECTOR, _UART4_FAULT_VECTOR, (p32_uart *)&U4MODE, NULL },
 #endif
 #if (__CHIP_HAS_UART > 4)
-    { QUEUES, "UART4", _UART5_TX_VECTOR, _UART5_RX_VECTOR, _UART5_FAULT_VECTOR, &U5MODE, NULL },
+    { QUEUES, "UART4", _UART5_TX_VECTOR, _UART5_RX_VECTOR, _UART5_FAULT_VECTOR, (p32_uart *)&U5MODE, NULL },
 #endif
 #if (__CHIP_HAS_UART > 5)
-    { QUEUES, "UART5", _UART6_TX_VECTOR, _UART6_RX_VECTOR, _UART6_FAULT_VECTOR, &U6MODE, NULL },
+    { QUEUES, "UART5", _UART6_TX_VECTOR, _UART6_RX_VECTOR, _UART6_FAULT_VECTOR, (p32_uart *)&U6MODE, NULL },
 #endif
 };
 
@@ -306,10 +306,10 @@ static inline uint32_t uart_calculate_baud(uint32_t baud, uint8_t *highspeed) {
     uint32_t brg;
     if (baud < 200000) {
         brg = ((cpu_get_peripheral_clock() / 16 / baud) - 1);
-        highspeed = 1;
+        *highspeed = 1;
     } else {
         brg = ((cpu_get_peripheral_clock() / 4 / baud) - 1);
-        highspeed = 1;
+        *highspeed = 0;
     }
     return brg;
 }
@@ -433,27 +433,27 @@ static void inline uart_handle_rx(uint8_t uart) {
 }
 
 #if (__CHIP_HAS_UART > 0)
-void __ISR(_UART1_RX_VECTOR, IPL2) uart_0_rx() { uart_handle_rx(0); }
+void __ISR(_UART1_RX_VECTOR, IPL2AUTO) uart_0_rx() { uart_handle_rx(0); }
 #endif
 
 #if (__CHIP_HAS_UART > 1)
-void __ISR(_UART2_RX_VECTOR, IPL2) uart_1_rx() { uart_handle_rx(1); }
+void __ISR(_UART2_RX_VECTOR, IPL2AUTO) uart_1_rx() { uart_handle_rx(1); }
 #endif
 
 #if (__CHIP_HAS_UART > 2)
-void __ISR(_UART3_RX_VECTOR, IPL2) uart_2_rx() { uart_handle_rx(2); }
+void __ISR(_UART3_RX_VECTOR, IPL2AUTO) uart_2_rx() { uart_handle_rx(2); }
 #endif
 
 #if (__CHIP_HAS_UART > 3)
-void __ISR(_UART4_RX_VECTOR, IPL2) uart_3_rx() { uart_handle_rx(3); }
+void __ISR(_UART4_RX_VECTOR, IPL2AUTO) uart_3_rx() { uart_handle_rx(3); }
 #endif
 
 #if (__CHIP_HAS_UART > 4)
-void __ISR(_UART5_RX_VECTOR, IPL2) uart_4_rx() { uart_handle_rx(4); }
+void __ISR(_UART5_RX_VECTOR, IPL2AUTO) uart_4_rx() { uart_handle_rx(4); }
 #endif
 
 #if (__CHIP_HAS_UART > 5)
-void __ISR(_UART6_RX_VECTOR, IPL2) uart_5_rx() { uart_handle_rx(5); }
+void __ISR(_UART6_RX_VECTOR, IPL2AUTO) uart_5_rx() { uart_handle_rx(5); }
 #endif
 
 
@@ -474,27 +474,27 @@ static inline void uart_handle_tx(uint8_t uart) {
 
 
 #if (__CHIP_HAS_UART > 0)
-void __ISR(_UART1_TX_VECTOR, IPL2) uart_0_tx() { uart_handle_tx(0); }
+void __ISR(_UART1_TX_VECTOR, IPL2AUTO) uart_0_tx() { uart_handle_tx(0); }
 #endif
 
 #if (__CHIP_HAS_UART > 1)
-void __ISR(_UART2_TX_VECTOR, IPL2) uart_1_tx() { uart_handle_tx(1); }
+void __ISR(_UART2_TX_VECTOR, IPL2AUTO) uart_1_tx() { uart_handle_tx(1); }
 #endif
 
 #if (__CHIP_HAS_UART > 2)
-void __ISR(_UART3_TX_VECTOR, IPL2) uart_2_tx() { uart_handle_tx(2); }
+void __ISR(_UART3_TX_VECTOR, IPL2AUTO) uart_2_tx() { uart_handle_tx(2); }
 #endif
 
 #if (__CHIP_HAS_UART > 3)
-void __ISR(_UART4_TX_VECTOR, IPL2) uart_3_tx() { uart_handle_tx(3); }
+void __ISR(_UART4_TX_VECTOR, IPL2AUTO) uart_3_tx() { uart_handle_tx(3); }
 #endif
 
 #if (__CHIP_HAS_UART > 4)
-void __ISR(_UART5_TX_VECTOR, IPL2) uart_4_tx() { uart_handle_tx(4); }
+void __ISR(_UART5_TX_VECTOR, IPL2AUTO) uart_4_tx() { uart_handle_tx(4); }
 #endif
 
 #if (__CHIP_HAS_UART > 5)
-void __ISR(_UART6_TX_VECTOR, IPL2) uart_5_tx() { uart_handle_tx(5); }
+void __ISR(_UART6_TX_VECTOR, IPL2AUTO) uart_5_tx() { uart_handle_tx(5); }
 #endif
 #endif
 

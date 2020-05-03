@@ -6,9 +6,11 @@
 #include <p32xxxx.h>
 #include <stdint.h>
 
-#include "sdk/cpu.h"
 #include "FreeRTOS.h"
 #include "task.h"
+
+#include "sdk/cpu.h"
+#include "sdk/uart.h"
 
 /**
  * Globally disable all interrupts
@@ -183,9 +185,9 @@ void __attribute__((nomips16)) cpu_general_exception() {
 
     char errormsg[40];
     sprintf(errormsg, "Genral exception at %08x\r\n", _excep_addr);
-    uart_write_bytes_emergency(0, errormsg, strlen(errormsg));
+    uart_write_bytes_emergency(0, (uint8_t *)errormsg, strlen(errormsg));
     sprintf(errormsg, "Guru Meditation %08x\r\n", _epc_code);
-    uart_write_bytes_emergency(0, errormsg, strlen(errormsg));
+    uart_write_bytes_emergency(0, (uint8_t *)errormsg, strlen(errormsg));
     while(1);
 }
 
@@ -203,9 +205,9 @@ void __attribute__((nomips16)) cpu_bootstrap_exception() {
 
     char errormsg[40];
     sprintf(errormsg, "Bootstrap exception at %08x\r\n", _excep_addr);
-    uart_write_bytes_emergency(0, errormsg, strlen(errormsg));
+    uart_write_bytes_emergency(0, (uint8_t *)errormsg, strlen(errormsg));
     sprintf(errormsg, "Guru Meditation %08x\r\n", _epc_code);
-    uart_write_bytes_emergency(0, errormsg, strlen(errormsg));
+    uart_write_bytes_emergency(0, (uint8_t *)errormsg, strlen(errormsg));
     while(1);
 }
 
@@ -223,9 +225,9 @@ void __attribute__((nomips16)) cpu_cache_error_exception() {
 
     char errormsg[40];
     sprintf(errormsg, "Cache error at %08x\r\n", _excep_addr);
-    uart_write_bytes_emergency(0, errormsg, strlen(errormsg));
+    uart_write_bytes_emergency(0, (uint8_t *)errormsg, strlen(errormsg));
     sprintf(errormsg, "Guru Meditation %08x\r\n", _epc_code);
-    uart_write_bytes_emergency(0, errormsg, strlen(errormsg));
+    uart_write_bytes_emergency(0, (uint8_t *)errormsg, strlen(errormsg));
     while(1);
 }
 

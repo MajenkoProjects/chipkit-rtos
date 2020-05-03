@@ -4,10 +4,12 @@
  * Provides facilities for reading and writing the internal flash of the PIC32
  */
 #include <p32xxxx.h>
+#include <sys/kmem.h>
 
 #include "FreeRTOS.h"
 #include "sdk/flash.h"
 #include "sdk/chipspec.h"
+#include "sdk/cpu.h"
 
 /**
  * Unlock the flash controller. This must be done before any flash operations are attempted.
